@@ -34,7 +34,7 @@ class _AppStatusScreenState extends ConsumerState<AppStatusScreen> {
   @override
   Widget build(BuildContext context) {
     final draft = ref.watch(applicationProvider);
-    final status = draft.applicationStatus ?? 'PENDING';
+    final status = draft.applicationStatus ?? 'DRAFT';
     final agentId = draft.serverAgentId ?? '—';
 
     return Scaffold(
@@ -68,7 +68,11 @@ class _AppStatusScreenState extends ConsumerState<AppStatusScreen> {
             agentId: agentId,
           ),
         ]);
-      default: // PENDING or null
+      case 'DRAFT':
+        return ListView(children: [
+          _DraftView(onStart: () => context.go(AppRoutes.appStep1Personal)),
+        ]);
+      default: // PENDING
         return ListView(children: [
           _PendingView(
             agentId: agentId,
@@ -76,6 +80,60 @@ class _AppStatusScreenState extends ConsumerState<AppStatusScreen> {
           ),
         ]);
     }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DRAFT STATE
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _DraftView extends StatelessWidget {
+  final VoidCallback onStart;
+  const _DraftView({required this.onStart});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const SizedBox(height: 60),
+
+          // Illustration
+          Container(
+            width: 100, height: 100,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.15),
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.primary.withOpacity(0.30), width: 1.5),
+            ),
+            child: const Icon(Icons.assignment_rounded, size: 48, color: AppColors.secondary),
+          ),
+
+          const SizedBox(height: AppSpacing.xxl),
+          Text(
+            'Complete Your Application',
+            style: AppTextStyles.heading2(AppColors.textPrimary),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Text(
+            "You haven't submitted your KYC details yet. Please complete your application to activate your agent account.",
+            style: AppTextStyles.bodyMed(AppColors.textSecond),
+            textAlign: TextAlign.center,
+          ),
+
+          const SizedBox(height: AppSpacing.xxxl),
+
+          PrimaryButton(
+            label: 'Start Application →',
+            onPressed: onStart,
+          ),
+          const SizedBox(height: AppSpacing.xxl),
+        ],
+      ),
+    );
   }
 }
 
