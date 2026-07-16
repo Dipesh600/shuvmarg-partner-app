@@ -128,9 +128,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
     await prefs.setString('email',   user['email']?.toString() ?? '');
     await prefs.setString('role',    user['role']?.toString() ?? '');
     await prefs.setString('accessToken', accessToken);
-    if (refreshToken != null) {
-      await prefs.setString('refreshToken', refreshToken);
-    }
+    // NOTE: refreshToken is intentionally NOT stored in SharedPreferences (plaintext).
+    // It is stored only in FlutterSecureStorage (OS-protected keychain) above.
+    // See NEW-FINDING-03 — SharedPreferences is readable on rooted devices.
 
     final status = _resolveStatus(user);
     state = AuthState(
