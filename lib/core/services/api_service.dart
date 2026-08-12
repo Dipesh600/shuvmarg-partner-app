@@ -40,7 +40,17 @@ class ApiService {
           _timeout,
           onTimeout: () => throw Exception('Request timed out. Check your connection.'),
         );
-    return json.decode(response.body) as Map<String, dynamic>;
+    
+    final data = json.decode(response.body) as Map<String, dynamic>;
+    
+    // Fallback for cookie-based refresh token
+    final setCookie = response.headers['set-cookie'];
+    if (setCookie != null && setCookie.contains('refreshToken=')) {
+      final token = setCookie.split('refreshToken=')[1].split(';')[0];
+      data['refreshToken'] = token;
+    }
+    
+    return data;
   }
 
   // ── Authenticated POST ───────────────────────────────────────────────────
