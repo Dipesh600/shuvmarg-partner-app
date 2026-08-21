@@ -70,15 +70,20 @@ flutter:
     - assets/images/
     - assets/icons/
 
-  # Headings (`--font-display` on the agent web). Weights are declared
-  # explicitly and match each file's OS/2 usWeightClass.
-  #
-  # Manrope (`--font-sans`) is NOT bundled yet and is still fetched via
-  # google_fonts at runtime. The .otf supplied for bundling turned out to be a
-  # static Manrope ExtraLight (usWeightClass 200, no fvar axis) despite its
-  # "VariableFont_wght" filename, and would have flattened the entire w300-w800
-  # scale. See lib/core/design/app_typography.dart.
+  # Both faces are bundled: no runtime font fetching in a release build.
   fonts:
+    # Body / UI (`--font-sans`). One variable file whose wght axis spans
+    # 200-800; the weight is chosen per style via FontVariation in
+    # AppFonts.sans, NOT by asset matching, so no `weight:` key belongs here.
+    # Converted losslessly from the agent web's own
+    # public/fonts/Manrope-VariableFont_wght.woff2 (WOFF2 is just a compression
+    # wrapper), so the letterforms are identical to the web's.
+    - family: Manrope
+      fonts:
+        - asset: assets/fonts/Manrope-Variable.ttf
+
+    # Headings (`--font-display`). Static pair; each declared weight was
+    # checked against that file's own OS/2 usWeightClass.
     - family: Neue Machina
       fonts:
         - asset: assets/fonts/NeueMachina-Light.otf

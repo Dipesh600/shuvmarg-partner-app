@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import 'app_colors.dart';
 
@@ -12,50 +11,72 @@ import 'app_colors.dart';
 ///   • **Neue Machina**  → all headings, weight 300, line-height 1.1,
 ///                          letter-spacing -0.01em (`--font-display`)
 ///
-/// Neue Machina is wired up: `NeueMachina-Light.otf` (weight 300) and
-/// `NeueMachina-Regular.otf` (weight 400) are bundled under `assets/fonts/`
-/// and declared as family `Neue Machina` in `pubspec.yaml`. Both files were
-/// verified against their OS/2 `usWeightClass` before being declared.
+/// Both faces are bundled — there is no runtime font fetching, which is what a
+/// release build needs.
 ///
-/// ⚠️ MANROPE IS STILL FETCHED AT RUNTIME.
+/// **Manrope** is one variable file whose `wght` axis spans 200–800. Critically
+/// the axis *defaults to 200* (ExtraLight), so naming a weight via
+/// [TextStyle.fontWeight] alone is not enough — Flutter would match the single
+/// declared asset and render the entire scale ExtraLight. [sans] therefore
+/// always emits a matching `FontVariation` on `wght`. The file was converted
+/// losslessly from the agent web's own
+/// `public/fonts/Manrope-VariableFont_wght.woff2` (WOFF2 is only a compression
+/// wrapper around the same sfnt), so these are the web's exact letterforms
+/// rather than a lookalike.
 ///
-/// The `.otf` supplied for bundling is named `Manrope-VariableFont_wght.otf`
-/// but is not a variable font: it carries no `fvar` table, has no axes, and
-/// reports `usWeightClass` 200 — it is a single static Manrope ExtraLight.
-/// Declaring it as family `Manrope` would collapse the whole w300–w800 scale
-/// below onto ExtraLight, including the `font-black` KPI figures. So [sans]
-/// deliberately stays on `google_fonts` until either the genuine variable
-/// `Manrope[wght].ttf` or the individual static instances are supplied.
-///
-/// Until then `google_fonts` cannot be dropped from `pubspec.yaml`, and a cold
-/// first launch with no network still falls back to a system face.
+/// **Neue Machina** ships as two static faces, 300 and 400, each declared
+/// weight checked against that file's OS/2 `usWeightClass`. There is
+/// deliberately no heavier instance — the web sets `h1`–`h3` at weight 300 and
+/// the light letterforms are the whole point. Asking this family for more than
+/// 400 will match the 400 face and leave the engine to synthesise the
+/// difference; see [display].
 /// ─────────────────────────────────────────────────────────────────────────────
 abstract final class AppFonts {
-  /// `true` — the Neue Machina faces are bundled and declared.
+  /// `true` — the Neue Machina faces are bundled and declared in `pubspec.yaml`.
   ///
   /// Deliberately `final` rather than `const`: as a `const` the analyzer
   /// reports whichever branch of [display] is not taken as dead code.
   static final bool hasNeueMachina = true;
 
+  static const String _sans = 'Manrope';
   static const String _neueMachina = 'Neue Machina';
+
+  /// Bounds of Manrope's `wght` axis, read from the file's own `fvar` table.
+  /// 200 is also the axis default, which is why [sans] never omits the
+  /// variation.
+  static const double _wghtMin = 200;
+  static const double _wghtMax = 800;
 
   /// Body / UI face. Matches the web's `--font-sans`.
   ///
-  /// NOTE: runtime-fetched, not bundled — see the class doc for why. This is a
-  /// release blocker, not a resting state: `google_fonts` fetches on first
-  /// launch and caches, so an offline first run silently renders a system face
-  /// instead of Manrope.
-  static TextStyle sans([TextStyle? base]) => GoogleFonts.manrope(
-    textStyle: base,
-  );
+  /// Emits `fontVariations` *and* preserves [base]'s `fontWeight`: the variation
+  /// is what actually renders the weight, while `fontWeight` is kept so weight-
+  /// aware widgets and `TextStyle.lerp` continue to behave sensibly.
+  static TextStyle sans([TextStyle? base]) {
+    final style = base ?? const TextStyle();
+    final weight = style.fontWeight ?? FontWeight.w400;
+    return style.copyWith(
+      fontFamily: _sans,
+      fontVariations: [FontVariation('wght', _wght(weight))],
+    );
+  }
 
   /// Display / heading face. Matches the web's `--font-display`.
+  ///
+  /// Falls back to [sans] — a bundled face — rather than to anything fetched at
+  /// runtime, so text never depends on the network to render.
   static TextStyle display([TextStyle? base]) {
     if (hasNeueMachina) {
       return (base ?? const TextStyle()).copyWith(fontFamily: _neueMachina);
     }
-    return GoogleFonts.manrope(textStyle: base);
+    return sans(base);
   }
+
+  /// Clamps a [FontWeight] onto Manrope's available axis range. Coordinates
+  /// outside `fvar`'s min/max are undefined per the OpenType spec; Skia clamps
+  /// them anyway, but doing it here keeps the emitted variation honest.
+  static double _wght(FontWeight weight) =>
+      weight.value.toDouble().clamp(_wghtMin, _wghtMax);
 }
 
 /// The type scale.
