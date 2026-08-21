@@ -378,10 +378,101 @@ Wave 1 also discharges brief item C1: base URL moves into
 
 ## 9. Open decisions
 
-1. **B6 — Riverpod or `Provider`?** Blocks Wave 1.
+1. ~~**B6 — Riverpod or `Provider`?**~~ **Decided: Riverpod.** Already resolved
+   in `pubspec.lock`; `provider` was never a dependency. Rules §4.1 says
+   "Provider" and needs amending to match. Logged in `activity_log.md`.
 2. **B1/B2 scope** — is backend work in play this cycle, or do we build only
    Waves 1–4 and leave the selling flow out?
 3. **Blocked screens** — honest "not available yet" states, or omit the tabs
    until the API exists? Mock data is not on the table; it would violate §2.3.
 4. **C3 offline** — queue-and-reconcile, or require connectivity?
 5. **B7** — Neue Machina w600.
+
+---
+
+## Appendix A. Salvage from the deleted legacy tree
+
+The 31 legacy files were removed in one commit (see `activity_log.md`). They are
+recoverable in full from tag `pre-redesign-partner-app`. What follows is the
+knowledge worth carrying into the rebuild — request shapes proven against a
+running backend, and mistakes not to repeat.
+
+### A.1 Verified request payloads
+
+Field names transcribed from the working legacy `AuthApi`/`AgentApi`. Note the
+inconsistency in the backend's own contract: **login and password-reset take
+`emailOrPhone`, while OTP endpoints take `phone`.** Not a typo — do not
+"normalise" it.
+
+| Call | Body |
+|---|---|
+| `sendPhoneOTP` | `{phone}` |
+| `verifyPhoneOTP` | `{phone, otp}` |
+| `completeRegistration` | `{phone, name, address, gender, password?, email?}` — password omitted on the existing-user upgrade path |
+| `login` | `{emailOrPhone, password}` |
+| `resendOtp` | `{phone, purpose}` |
+| `requestPasswordReset` | `{emailOrPhone}` |
+| `verifyOtpForReset` | `{emailOrPhone, otp}` |
+| `resetPassword` | `{emailOrPhone, otp, newPassword}` |
+| `application/document` | multipart; file part named **`file`**, plus text field `documentType` |
+| `application/submit` | `{}` — empty body, token carries the identity |
+
+`address` defaulted to `'Nepal'` and `gender` to `'male'` in the legacy client.
+Both are required by the backend but meaningless for an agent signup — collect
+them properly or confirm the defaults are acceptable.
+
+### A.2 Two decisions worth preserving
+
+- **Refresh token never touches `SharedPreferences`.** It lived only in
+  `FlutterSecureStorage`, with a comment citing `NEW-FINDING-03`:
+  SharedPreferences is readable on a rooted device. Keep this.
+- `FlutterSecureStorage(aOptions: AndroidOptions(encryptedSharedPreferences: true))`
+  — without this flag the Android implementation is weaker. Keep it.
+
+### A.3 Bugs not to reproduce
+
+The legacy `ApiService` is where most of the rework is. It looked finished and
+was not:
+
+1. **No status-code checks anywhere.** A 403 body was `json.decode`d and
+   returned as though it succeeded. Every caller then read `data['success']`
+   and hoped. The new layer must branch on status first.
+2. **`json.decode` unguarded.** A 502 HTML page or an empty body throws
+   `FormatException`, which surfaces as a raw exception screen — §4.2 forbids
+   exactly that.
+3. **No 401 handling.** The class comment advertised refresh; the code only
+   scraped a `refreshToken` out of `set-cookie`. Nothing ever called
+   `/refresh`, so every session died at access-token expiry.
+4. **`X-App-Source` hardcoded to `'agent'`** in two places. It must come from
+   the session's `activeRole` so conductor and driver can log in at all.
+5. **Errors transported as `Exception('...')` strings.** No `errorCode`
+   survived, so no screen could branch on `ACCOUNT_SUSPENDED` vs
+   `ROLE_NOT_REGISTERED`. Typed failures are required — that is the whole
+   reason `core/errors/` exists in §4.
+6. **All-static methods**, so nothing was injectable or testable.
+7. `authPatch` had no timeout while every sibling had 15 s.
+8. **`_resolveStatus` guessed the application status** from `user['isVerified']`
+   instead of reading `applicationStatus`, which the backend returns explicitly
+   — including inside the `requireApprovedAgent` 403 body. Guessing here means
+   routing an agent to the wrong screen.
+9. **`accessToken` was written to `SharedPreferences`** (plaintext) *and* secure
+   storage, immediately below the comment explaining why plaintext is unsafe.
+   The care taken over the refresh token was undone one line earlier.
+10. **`logout()` called `prefs.clear()`**, destroying unrelated preferences.
+    Delete known keys only.
+11. **`AuthStatus` conflated authentication with agent approval**
+    (`needsApplication`, `applicationPending` as auth states). That cannot model
+    a conductor or driver, who have no application at all. Session state and
+    per-workspace gate state must be separate.
+12. `copyWith` could not null a field, so `errorMessage` persisted for the rest
+    of the session once set.
+
+### A.4 Dead-on-arrival flow
+
+`features/booking/` — 7 screens, 2,443 lines: route search → results → seat map
+→ passenger details → payment mode → QR → confirm. It called
+`POST /api/ticket/prepareBooking` and `/confirmBooking`, both guarded by
+`requireRole("passenger")`. **An agent JWT receives 403 on every one.** This
+flow never worked in this app and was not rewritten. It is the client-side half
+of blocker **B1**; when B1 is resolved, this is the UX to rebuild — but against
+whatever agent-scoped contract the backend then offers, not these endpoints.
