@@ -12,38 +12,39 @@ import 'app_colors.dart';
 ///   • **Neue Machina**  → all headings, weight 300, line-height 1.1,
 ///                          letter-spacing -0.01em (`--font-display`)
 ///
-/// ⚠️ NEUE MACHINA IS NOT WIRED UP YET.
+/// Neue Machina is wired up: `NeueMachina-Light.otf` (weight 300) and
+/// `NeueMachina-Regular.otf` (weight 400) are bundled under `assets/fonts/`
+/// and declared as family `Neue Machina` in `pubspec.yaml`. Both files were
+/// verified against their OS/2 `usWeightClass` before being declared.
 ///
-/// The web ships it as `.woff2` (`shuvmarg_partner_web/public/fonts/`), a
-/// format Flutter cannot load — Flutter needs `.otf` or `.ttf`. Until those
-/// files exist, [display] falls back to Manrope at weight 300 with Neue
-/// Machina's metrics (tight line-height, negative tracking) so the *rhythm* of
-/// the web's headings is preserved even though the letterforms differ.
+/// ⚠️ MANROPE IS STILL FETCHED AT RUNTIME.
 ///
-/// To switch it on:
-///   1. drop `NeueMachina-Regular.otf` + `NeueMachina-Light.otf` into
-///      `assets/fonts/`
-///   2. declare the family as `Neue Machina` in `pubspec.yaml`
-///   3. flip [hasNeueMachina] to `true`
+/// The `.otf` supplied for bundling is named `Manrope-VariableFont_wght.otf`
+/// but is not a variable font: it carries no `fvar` table, has no axes, and
+/// reports `usWeightClass` 200 — it is a single static Manrope ExtraLight.
+/// Declaring it as family `Manrope` would collapse the whole w300–w800 scale
+/// below onto ExtraLight, including the `font-black` KPI figures. So [sans]
+/// deliberately stays on `google_fonts` until either the genuine variable
+/// `Manrope[wght].ttf` or the individual static instances are supplied.
 ///
-/// Nothing else in the codebase needs to change.
+/// Until then `google_fonts` cannot be dropped from `pubspec.yaml`, and a cold
+/// first launch with no network still falls back to a system face.
 /// ─────────────────────────────────────────────────────────────────────────────
 abstract final class AppFonts {
-  /// Flip to `true` once the Neue Machina `.otf` files are bundled.
-  /// See the class doc above for the three-step checklist.
+  /// `true` — the Neue Machina faces are bundled and declared.
   ///
-  /// Deliberately `final` rather than `const`: as a `const false` the analyzer
-  /// reports the enabled branch of [display] as dead code.
-  static final bool hasNeueMachina = false;
+  /// Deliberately `final` rather than `const`: as a `const` the analyzer
+  /// reports whichever branch of [display] is not taken as dead code.
+  static final bool hasNeueMachina = true;
 
   static const String _neueMachina = 'Neue Machina';
 
   /// Body / UI face. Matches the web's `--font-sans`.
   ///
-  /// NOTE: `google_fonts` fetches at runtime on first launch and caches. For a
-  /// production release Manrope should be bundled into `assets/fonts/` and
-  /// `GoogleFonts.config.allowRuntimeFetching` set to `false`, so first launch
-  /// and offline use don't silently fall back to a system face.
+  /// NOTE: runtime-fetched, not bundled — see the class doc for why. This is a
+  /// release blocker, not a resting state: `google_fonts` fetches on first
+  /// launch and caches, so an offline first run silently renders a system face
+  /// instead of Manrope.
   static TextStyle sans([TextStyle? base]) => GoogleFonts.manrope(
     textStyle: base,
   );
