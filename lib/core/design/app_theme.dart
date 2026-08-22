@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'app_colors.dart';
+import 'app_page_transitions.dart';
 import 'app_tokens.dart';
 import 'app_typography.dart';
 
@@ -54,17 +55,16 @@ ThemeData buildAppTheme() {
     canvasColor: AppColors.canvas,
 
     // ── Page transitions ────────────────────────────────────────────────────
-    // Drive both platforms with the Cupertino horizontal slide + parallax.
-    // Android's default ZoomPageTransitionsBuilder stutters when the incoming
-    // screen does work on its first frame (e.g. decoding images), which reads as
-    // cheap; the Cupertino slide is lighter and consistent. Crucially, the
-    // interactive edge-swipe-back detector ships *inside* this builder, so
-    // swipe-to-go-back works on Android as well as iOS — the system back button
-    // and the swipe gesture stay in lockstep.
+    // A refined Cupertino slide: the horizontal slide + interactive
+    // edge-swipe-back are preserved (the detector lives inside the Cupertino
+    // builder), but LiquidPageTransitionsBuilder stretches the timeline to
+    // 550ms and cross-fades the page with a decelerating curve so screens melt
+    // in over the receding page instead of hard-sliding. Same builder on both
+    // platforms keeps the motion consistent. See app_page_transitions.dart.
     pageTransitionsTheme: const PageTransitionsTheme(
       builders: {
-        TargetPlatform.android: CupertinoPageTransitionsBuilder(),
-        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+        TargetPlatform.android: LiquidPageTransitionsBuilder(),
+        TargetPlatform.iOS: LiquidPageTransitionsBuilder(),
       },
     ),
 
