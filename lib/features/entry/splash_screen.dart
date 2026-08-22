@@ -36,6 +36,21 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
   static const Duration _splashDuration = Duration(milliseconds: 2200);
 
+  /// Content images shown across the shared entry flow (this splash, welcome,
+  /// sign-in and the support sheet). Kept in step with the `Image.asset` paths
+  /// in those screens. Warmed once below so none of them pop in later.
+  static const List<String> _entryFlowImageAssets = [
+    'assets/images/splash_screen.webp',
+    'assets/images/login_screen_background_button.webp',
+    'assets/images/logo_orange.webp',
+    'assets/images/agent_ticket_icon.webp',
+    'assets/images/conductor_icon.webp',
+    'assets/images/Driver_stering_icon.webp',
+    'assets/images/support_icon.png',
+  ];
+
+  bool _didPrecacheEntryAssets = false;
+
   @override
   void initState() {
     super.initState();
@@ -68,6 +83,26 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     _controller.forward();
 
     _navigationTimer = Timer(_splashDuration, _navigateToNext);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Warm the raster cache for the whole entry flow while the splash holds its
+    // ~2.2s dwell. Without this, `Image.asset` on welcome/sign-in decodes lazily
+    // on first paint — blank, then a pop-in mid-transition. Precaching here means
+    // those screens render their artwork on the very first frame. Uses a plain
+    // `AssetImage` (no `cacheWidth`) so the cache key matches the widgets exactly.
+    if (_didPrecacheEntryAssets) return;
+    _didPrecacheEntryAssets = true;
+    for (final asset in _entryFlowImageAssets) {
+      precacheImage(
+        AssetImage(asset),
+        context,
+        onError: (error, _) =>
+            debugPrint('Splash: skipped precache of $asset ($error)'),
+      );
+    }
   }
 
   void _navigateToNext() {

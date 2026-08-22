@@ -53,6 +53,21 @@ ThemeData buildAppTheme() {
     scaffoldBackgroundColor: AppColors.canvas,
     canvasColor: AppColors.canvas,
 
+    // ── Page transitions ────────────────────────────────────────────────────
+    // Drive both platforms with the Cupertino horizontal slide + parallax.
+    // Android's default ZoomPageTransitionsBuilder stutters when the incoming
+    // screen does work on its first frame (e.g. decoding images), which reads as
+    // cheap; the Cupertino slide is lighter and consistent. Crucially, the
+    // interactive edge-swipe-back detector ships *inside* this builder, so
+    // swipe-to-go-back works on Android as well as iOS — the system back button
+    // and the swipe gesture stay in lockstep.
+    pageTransitionsTheme: const PageTransitionsTheme(
+      builders: {
+        TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+      },
+    ),
+
     // Manrope everywhere by default; display styles opt in explicitly.
     textTheme: _textTheme,
 
