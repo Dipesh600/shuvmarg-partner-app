@@ -26,17 +26,22 @@ import 'routes.dart';
 
 /// Returns the location to redirect to, or `null` to allow [location] as-is.
 String? sessionRedirect(SessionState state, String location) {
+  // Allow the splash screen to hold for its animated brand presentation.
+  // The splash screen itself handles the timed navigation hand-off.
+  if (location == AppRoutes.splash) {
+    return null;
+  }
+
   final persona = _personaForLocation(location);
 
   return switch (state) {
-    // Should not be observed after bootstrap (build() is synchronous), but if a
-    // restore is ever in flight, hold on the splash and send anything else to it.
-    SessionRestoring() => location == AppRoutes.splash ? null : AppRoutes.splash,
+    // If a restore is in flight, send to splash.
+    SessionRestoring() => AppRoutes.splash,
 
     // Signed out: only the shared entry pages are reachable. A workspace
-    // location, or the transient splash, goes to the welcome screen.
+    // location redirects to the welcome screen.
     SessionSignedOut() =>
-      (persona != null || location == AppRoutes.splash)
+      persona != null
           ? AppRoutes.welcome
           : null,
 

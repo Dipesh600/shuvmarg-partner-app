@@ -54,7 +54,13 @@ class WrongAppScreen extends StatelessWidget {
               const Spacer(),
               AppButton(
                 label: 'Back to role selection',
-                onPressed: () => context.go(AppRoutes.welcome),
+                onPressed: () {
+                  if (context.canPop()) {
+                    context.pop();
+                  } else {
+                    context.go(AppRoutes.welcome);
+                  }
+                },
               ),
               const SizedBox(height: AppSpacing.sm),
             ],
