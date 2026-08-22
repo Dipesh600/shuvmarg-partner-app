@@ -55,16 +55,16 @@ ThemeData buildAppTheme() {
     canvasColor: AppColors.canvas,
 
     // ── Page transitions ────────────────────────────────────────────────────
-    // A refined Cupertino slide: the horizontal slide + interactive
-    // edge-swipe-back are preserved (the detector lives inside the Cupertino
-    // builder), but LiquidPageTransitionsBuilder stretches the timeline to
-    // 550ms and cross-fades the page with a decelerating curve so screens melt
-    // in over the receding page instead of hard-sliding. Same builder on both
-    // platforms keeps the motion consistent. See app_page_transitions.dart.
+    // A clean Cupertino horizontal slide, pace-tuned. The slide + interactive
+    // edge-swipe-back are preserved (both live inside the Cupertino builder);
+    // PartnerPageTransitionsBuilder only stretches the timeline to 600ms so the
+    // motion reads as deliberate rather than rushed. No fade is layered on the
+    // sliding page — that would ghost the outgoing screen through it. Same
+    // builder on both platforms. See app_page_transitions.dart.
     pageTransitionsTheme: const PageTransitionsTheme(
       builders: {
-        TargetPlatform.android: LiquidPageTransitionsBuilder(),
-        TargetPlatform.iOS: LiquidPageTransitionsBuilder(),
+        TargetPlatform.android: PartnerPageTransitionsBuilder(),
+        TargetPlatform.iOS: PartnerPageTransitionsBuilder(),
       },
     ),
 
