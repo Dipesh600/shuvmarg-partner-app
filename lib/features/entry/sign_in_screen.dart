@@ -8,6 +8,7 @@ import '../../core/design/design.dart';
 import '../../domain/app_role.dart';
 import '../../shared/session/session_controller.dart';
 import '../../shared/session/session_providers.dart';
+import 'widgets/role_support_sheet.dart';
 
 /// Role-aware mobile sign-in screen.
 ///
@@ -98,68 +99,8 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     }
   }
 
-  void _showHelpSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(AppSpacing.xl),
-        decoration: const BoxDecoration(
-          color: AppColors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                height: 4,
-                width: 40,
-                decoration: BoxDecoration(
-                  color: AppColors.border,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            const Text(
-              'Partner Support',
-              style: TextStyle(
-                fontFamily: 'Neue Machina',
-                fontSize: 22,
-                fontWeight: FontWeight.w400,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'Need help accessing your partner account? Reach out to our 24/7 team.',
-              style: TextStyle(
-                fontFamily: 'Manrope',
-                fontSize: 13,
-                color: AppColors.textTertiary,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            _SupportOption(
-              icon: Icons.phone_in_talk_outlined,
-              title: 'Call Partner Helpline',
-              subtitle: '+977 01-5970000 (Toll Free)',
-              onTap: () => Navigator.pop(context),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            _SupportOption(
-              icon: Icons.chat_bubble_outline_rounded,
-              title: 'WhatsApp Support',
-              subtitle: 'Quick response within 5 minutes',
-              onTap: () => Navigator.pop(context),
-            ),
-            const SizedBox(height: AppSpacing.xl),
-          ],
-        ),
-      ),
-    );
+  void _showHelpSheet(BuildContext context, AppRole role) {
+    RoleSupportSheet.show(context, role: role);
   }
 
   @override
@@ -438,16 +379,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                   Align(
                     alignment: Alignment.centerRight,
                     child: GestureDetector(
-                      onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Please contact your bus operator or support to reset your password.',
-                            ),
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                      },
+                      onTap: () => _showHelpSheet(context, role),
                       behavior: HitTestBehavior.opaque,
                       child: const Padding(
                         padding: EdgeInsets.symmetric(vertical: 4),
@@ -563,7 +495,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                   // Having Trouble Signing In? Get Help Row
                   Center(
                     child: GestureDetector(
-                      onTap: () => _showHelpSheet(context),
+                      onTap: () => _showHelpSheet(context, role),
                       behavior: HitTestBehavior.opaque,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
@@ -672,7 +604,7 @@ class _BackButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.white,
           shape: BoxShape.circle,
-          border: Border.all(color: AppColors.neutral200),
+          border: Border.all(color: AppColors.border),
           boxShadow: [
             BoxShadow(
               color: AppColors.neutral900.withValues(alpha: 0.04),
@@ -685,82 +617,6 @@ class _BackButton extends StatelessWidget {
           Icons.arrow_back_rounded,
           size: 20,
           color: AppColors.textPrimary,
-        ),
-      ),
-    );
-  }
-}
-
-/// Single support contact tile.
-class _SupportOption extends StatelessWidget {
-  const _SupportOption({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: AppColors.canvas,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Row(
-          children: [
-            Container(
-              height: 40,
-              width: 40,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.primarySurface,
-              ),
-              child: Icon(icon, size: 20, color: AppColors.primary),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontFamily: 'Manrope',
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      fontFamily: 'Manrope',
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.textTertiary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(
-              Icons.chevron_right_rounded,
-              size: 20,
-              color: AppColors.textPlaceholder,
-            ),
-          ],
         ),
       ),
     );
