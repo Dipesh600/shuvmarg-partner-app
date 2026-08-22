@@ -55,11 +55,37 @@ class SessionStore {
 
   Session? _cached;
 
+  /// The most recent refresh token this store has seen, held synchronously.
+  ///
+  /// [updateRefreshToken] is called fire-and-forget by the response interceptor,
+  /// so at login the rotated token arrives in the `Set-Cookie` header *before*
+  /// [write] persists the session — but [_cached] is still `null` at that point,
+  /// so there is no [Session] to hold it on. This slot captures it synchronously
+  /// during the interceptor's `onResponse` pass, so [signIn] can read it back
+  /// through [lastKnownRefreshToken] and fold it into the [Session] it writes.
+  ///
+  /// Without it, the login flow captures the cookie and then immediately
+  /// clobbers it: [write] runs with a session whose `refreshToken` is null and
+  /// deletes the key, leaving the session non-renewable and signing the user out
+  /// at the first token refresh. This is the structural fix for that, not a
+  /// retry patch over the symptom.
+  String? _lastKnownRefreshToken;
+
   /// The session as last read or written, without touching the Keychain.
   ///
   /// Valid only after [read] has run once — bootstrap does that before any
   /// request is made. Returns `null` when signed out.
   Session? get cached => _cached;
+
+  /// The freshest refresh token known, whether or not a full [Session] has been
+  /// assembled yet.
+  ///
+  /// Prefers the live session's token; falls back to the last value captured by
+  /// [updateRefreshToken] before a session existed — the login case, where the
+  /// cookie is lifted from the response before [write] runs. Returns `null` when
+  /// nothing has been captured.
+  String? get lastKnownRefreshToken =>
+      _cached?.refreshToken ?? _lastKnownRefreshToken;
 
   // ───────────────────────────────────────────────────────────────────────────
   // Read
@@ -129,9 +155,11 @@ class SessionStore {
 
     final refresh = session.refreshToken;
     if (refresh != null && refresh.isNotEmpty) {
+      _lastKnownRefreshToken = refresh;
       await _storage.write(key: _kRefreshToken, value: refresh);
     } else {
       // Do not leave a stale refresh token behind a session that has none.
+      _lastKnownRefreshToken = null;
       await _storage.delete(key: _kRefreshToken);
     }
   }
@@ -152,6 +180,10 @@ class SessionStore {
   /// out early.
   Future<void> updateRefreshToken(String refreshToken) async {
     if (refreshToken.isEmpty) return;
+    // Capture synchronously before anything awaits: at login the session does
+    // not exist yet, so this slot is the only place the just-issued cookie can
+    // live until `signIn` folds it into the Session it writes.
+    _lastKnownRefreshToken = refreshToken;
     final current = _cached;
     if (current != null) {
       _cached = current.copyWith(refreshToken: refreshToken);
@@ -169,6 +201,7 @@ class SessionStore {
   /// secure entries added later are not collateral damage.
   Future<void> clear() async {
     _cached = null;
+    _lastKnownRefreshToken = null;
     await _storage.delete(key: _kAccessToken);
     await _storage.delete(key: _kRefreshToken);
     await _storage.delete(key: _kUser);
