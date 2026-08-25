@@ -5,16 +5,14 @@
 /// *everything* after the shared entry screens: your route subtree, your
 /// navigation bar, your home screen, your endpoints.
 ///
-/// Wire values must match the backend's `VALID_APP_SOURCES` exactly
-/// (`src/modules/auth/login/login.policy.js`):
+/// Wire values must be one of the roles the backend recognises on `X-App-Source`
+/// (`APP_SOURCE_ROLES` in `src/modules/auth/login/login.policy.js`):
 ///
-///   ['passenger', 'busOwner', 'agent', 'conductor', 'driver']
+///   passenger, busOwner, agent, conductor, driver
 ///
-/// That list is compared **case-sensitively** against an `X-App-Source` header
-/// the server has already lowercased — a documented, test-pinned quirk which
-/// means `busOwner` can never be selected by a client. It does not affect us:
-/// all three roles below are already lowercase and match cleanly. Do not
-/// "normalise" the wire values.
+/// The server lowercases the header and looks the role up on its lowercased form,
+/// so casing on the wire does not matter. The lowercase values below are the
+/// canonical spelling for the three roles this app serves; send them as-is.
 /// ─────────────────────────────────────────────────────────────────────────────
 enum AppRole {
   /// Books seats on behalf of walk-in customers. Two sub-types exist
