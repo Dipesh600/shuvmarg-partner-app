@@ -113,6 +113,26 @@ abstract final class ApiPaths {
   // until KYC clears.
   // ───────────────────────────────────────────────────────────────────────────
 
+  /// `GET` — the agent's own identity: `agentCode`, `scope`, `outletType`,
+  /// `kycStatus` + `kycStatusLabel`, `kycCleared`, the outlet fields, and an
+  /// `assignments` summary. `PATCH` updates the editable subset (name, outlet
+  /// type, district, municipality, placeName, businessName, shopAddress) and
+  /// answers with the same shape.
+  ///
+  /// Deliberately **not** behind `requireApprovedAgent`: an agent must be able
+  /// to read their own code and KYC state at every status, including DRAFT.
+  /// That is the difference between this and [agentProfile].
+  ///
+  /// `kycCleared` is the server's answer to "does this agent's own verification
+  /// permit selling". It is not permission to sell — that needs an active
+  /// operator assignment, which does not exist yet. Never derive it client-side.
+  static const String agentMe = '/api/agent/me';
+
+  /// `GET` — the code alone, plus `sharePayload`: the exact sentence to put on a
+  /// clipboard or into a share sheet, composed server-side so the app, the web
+  /// agent console and the operator console all share one wording.
+  static const String agentMeCode = '/api/agent/me/code';
+
   /// `POST` — saves a partial KYC application. Idempotent; safe to autosave.
   static const String agentApplicationSave = '/api/agent/application/save';
 
