@@ -2,9 +2,9 @@
     <!-- Internet access (required for all API calls) -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="shuvmarg_partner_app"
+        android:label="Partner"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@mipmap/launcher_icon"
         android:usesCleartextTraffic="true">
         <activity
             android:name=".MainActivity"

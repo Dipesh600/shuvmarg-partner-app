@@ -1,47 +1,25 @@
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:shuvmarg_partner_app/core/theme/app_theme.dart';
-import 'package:shuvmarg_partner_app/core/router/app_router.dart';
+import 'app/app.dart';
+import 'app/bootstrap.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  // Force portrait orientation
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-  ]);
-
-  // AMOLED status bar — transparent, dark icons on dark surface
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-      systemNavigationBarColor: Color(0xFF0A1F1C),
-      systemNavigationBarIconBrightness: Brightness.light,
-    ),
-  );
-
+/// ─────────────────────────────────────────────────────────────────────────────
+/// Shuvmarg Partner — entry point
+///
+/// [bootstrap] does the async startup work and returns a container already
+/// primed with the persisted session. Hosting that same container with an
+/// [UncontrolledProviderScope] (rather than a plain `ProviderScope`) means the
+/// session the router reads on its first redirect is the one we just restored —
+/// no second read, no first-frame flash of the signed-out state for a returning
+/// user.
+/// ─────────────────────────────────────────────────────────────────────────────
+Future<void> main() async {
+  final container = await bootstrap();
   runApp(
-    const ProviderScope(
-      child: ShuvmargPartnerApp(),
+    UncontrolledProviderScope(
+      container: container,
+      child: const ShuvmargPartnerApp(),
     ),
   );
-}
-
-class ShuvmargPartnerApp extends ConsumerWidget {
-  const ShuvmargPartnerApp({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final router = ref.watch(routerProvider);
-
-    return MaterialApp.router(
-      title: 'Shuvmarg Partner',
-      debugShowCheckedModeBanner: false,
-      theme: buildAppTheme(),
-      routerConfig: router,
-    );
-  }
 }

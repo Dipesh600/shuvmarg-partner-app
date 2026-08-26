@@ -34,7 +34,9 @@ dependencies:
   cached_network_image: ^3.4.1
 
   # ── UI Helpers ────────────────────────────────────────────────
-  google_fonts: ^6.2.1
+  # NOTE: google_fonts was removed here. Both faces (Manrope, Neue Machina) are
+  # bundled under assets/fonts/ and declared below, so nothing fetches a font at
+  # runtime. Re-adding it would reintroduce a network dependency for text.
   flutter_svg: ^2.0.17
   shimmer: ^3.0.0
   pinput: ^5.0.0
@@ -62,6 +64,17 @@ dev_dependencies:
   retrofit_generator: ^9.1.5
   json_serializable: ^6.9.5
   json_annotation: ^4.9.0
+  flutter_launcher_icons: ^0.14.4
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  remove_alpha_ios: true
+  image_path: "assets/images/logo_orange.webp"
+  min_sdk_android: 21
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/images/logo_orange.webp"
+
 
 flutter:
   uses-material-design: true
@@ -69,4 +82,25 @@ flutter:
   assets:
     - assets/images/
     - assets/icons/
+
+  # Both faces are bundled: no runtime font fetching in a release build.
+  fonts:
+    # Body / UI (`--font-sans`). One variable file whose wght axis spans
+    # 200-800; the weight is chosen per style via FontVariation in
+    # AppFonts.sans, NOT by asset matching, so no `weight:` key belongs here.
+    # Converted losslessly from the agent web's own
+    # public/fonts/Manrope-VariableFont_wght.woff2 (WOFF2 is just a compression
+    # wrapper), so the letterforms are identical to the web's.
+    - family: Manrope
+      fonts:
+        - asset: assets/fonts/Manrope-Variable.ttf
+
+    # Headings (`--font-display`). Static pair; each declared weight was
+    # checked against that file's own OS/2 usWeightClass.
+    - family: Neue Machina
+      fonts:
+        - asset: assets/fonts/NeueMachina-Light.otf
+          weight: 300
+        - asset: assets/fonts/NeueMachina-Regular.otf
+          weight: 400
 
