@@ -94,18 +94,21 @@ abstract final class ApiPaths {
   static const String agentRefresh = '/api/auth/agent/refresh';
   static const String agentLogout = '/api/auth/agent/logout';
 
-  /// `POST` — body `{emailOrPhone}`.
+  /// `POST` — body `{phone}`. Always returns neutral copy so the screen cannot
+  /// reveal whether an account exists.
   static const String agentRequestPasswordReset =
       '/api/auth/agent/requestPasswordReset';
 
-  /// `POST` — body `{emailOrPhone, otp}`.
+  /// `POST` — body `{phone, otp}`. Verifies without consuming; completion
+  /// verifies and consumes the same OTP atomically.
   static const String agentVerifyOtpForReset =
       '/api/auth/agent/verifyOtpForReset';
 
-  /// `POST` — body `{emailOrPhone, otp, newPassword}`.
+  /// `POST` — body `{phone, otp, newPassword}`. Returns an agent session and
+  /// also activates an invited account.
   static const String agentResetPassword = '/api/auth/agent/resetPassword';
 
-  /// `POST` — body `{emailOrPhone}`.
+  /// `POST` — body `{phone}`.
   static const String agentResendOtpForReset =
       '/api/auth/agent/resendOtpForReset';
 

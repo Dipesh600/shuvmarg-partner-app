@@ -32,6 +32,9 @@ abstract final class AppRoutes {
   /// The phone and role travel in memory, never in the URL.
   static const String activateAccount = '/activate-account';
 
+  /// Agent password recovery. Phone and OTP remain in memory, never the URL.
+  static const String recoverPassword = '/recover-password';
+
   /// First-login password replacement reached with an in-memory temporary
   /// token. The token is deliberately never placed in the URL.
   static const String forcePassword = '/set-password';

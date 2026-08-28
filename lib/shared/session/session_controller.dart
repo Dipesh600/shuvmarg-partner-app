@@ -51,19 +51,12 @@ final class SignInFailure extends SignInOutcome {
   final Failure failure;
 }
 
-/// ─────────────────────────────────────────────────────────────────────────────
-/// Shuvmarg Partner — session controller
-///
-/// Owns the [SessionState] the whole app routes on. It is the *only* thing that
-/// writes the session store as part of a user-driven flow, so the rules about
-/// what a valid session looks like live in one place.
-///
+/// Owns routed session state and all user-driven writes to the session store.
 /// [build] is synchronous: bootstrap has already awaited [SessionStore.read], so
 /// the cached session (or its absence) is known before the first frame. Making
 /// build synchronous means the router never has to reason about an
 /// `AsyncLoading` session — the only "loading" is [SessionRestoring], which the
 /// splash owns before this provider is ever read.
-/// ─────────────────────────────────────────────────────────────────────────────
 class SessionController extends Notifier<SessionState> {
   @override
   SessionState build() {
@@ -171,6 +164,25 @@ class SessionController extends Notifier<SessionState> {
     }
   }
 
+  Future<Result<AppRole>> recoverAgentPassword({
+    required String phone,
+    required String otp,
+    required String newPassword,
+  }) async {
+    final result = await ref
+        .read(apiServiceProvider)
+        .post(
+          ApiPaths.agentResetPassword,
+          body: {'phone': phone, 'otp': otp, 'newPassword': newPassword},
+          authenticated: false,
+          appSource: AppRole.agent,
+        );
+    return switch (result) {
+      Err(:final failure) => Result.err(failure),
+      Ok(:final value) => _persistAuthenticatedResponse(value, AppRole.agent),
+    };
+  }
+
   Future<Result<AppRole>> _persistAuthenticatedResponse(
     Map<String, dynamic> response,
     AppRole fallbackRole,
@@ -191,8 +203,7 @@ class SessionController extends Notifier<SessionState> {
     }
   }
 
-  /// Signs the user out: revokes the refresh token server-side (best effort),
-  /// then clears local state regardless of the network outcome.
+  /// Revokes the server session best-effort, then always clears local state.
   ///
   /// The local clear is unconditional on purpose — if the revoke call fails
   /// (offline, server error) the user must still end up signed out locally, not

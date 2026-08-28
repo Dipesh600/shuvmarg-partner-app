@@ -9,11 +9,17 @@ class ActivationPasswordStep extends StatefulWidget {
     required this.submitting,
     required this.error,
     required this.onSubmit,
+    this.title = 'Create your password',
+    this.description = 'Use this password the next time you sign in.',
+    this.actionLabel = 'Activate my account',
   });
 
   final bool submitting;
   final String? error;
   final ValueChanged<String> onSubmit;
+  final String title;
+  final String description;
+  final String actionLabel;
 
   @override
   State<ActivationPasswordStep> createState() => _ActivationPasswordStepState();
@@ -68,12 +74,9 @@ class _ActivationPasswordStepState extends State<ActivationPasswordStep> {
       children: [
         const _PasswordStepMark(),
         const SizedBox(height: AppSpacing.xl),
-        Text('Create your password', style: AppText.display2),
+        Text(widget.title, style: AppText.display2),
         const SizedBox(height: AppSpacing.xs),
-        Text(
-          'Use this password the next time you sign in.',
-          style: AppText.bodySm,
-        ),
+        Text(widget.description, style: AppText.bodySm),
         const SizedBox(height: AppSpacing.xl),
         AppCard(
           child: Column(
@@ -124,7 +127,7 @@ class _ActivationPasswordStepState extends State<ActivationPasswordStep> {
               ],
               const SizedBox(height: AppSpacing.xl),
               AppButton(
-                label: 'Activate my account',
+                label: widget.actionLabel,
                 isLoading: widget.submitting,
                 onPressed: widget.submitting ? null : _submit,
               ),
