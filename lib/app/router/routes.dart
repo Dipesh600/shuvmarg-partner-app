@@ -28,6 +28,10 @@ abstract final class AppRoutes {
   /// unrecognised role bounces back to [welcome] (see the per-route redirect).
   static const String signIn = '/sign-in';
 
+  /// Phone-ownership verification for an account created by an operator.
+  /// The phone and role travel in memory, never in the URL.
+  static const String activateAccount = '/activate-account';
+
   /// First-login password replacement reached with an in-memory temporary
   /// token. The token is deliberately never placed in the URL.
   static const String forcePassword = '/set-password';

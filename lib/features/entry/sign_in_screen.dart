@@ -5,9 +5,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/router/routes.dart';
 import '../../core/design/design.dart';
+import '../../core/errors/failure.dart';
 import '../../domain/app_role.dart';
 import '../../shared/session/session_controller.dart';
 import '../../shared/session/session_providers.dart';
+import 'activation/activation_route.dart';
 import 'force_password/force_password_route.dart';
 import 'widgets/role_support_sheet.dart';
 
@@ -99,6 +101,13 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
           extra: ForcePasswordArgs(tempToken: tempToken, role: role),
         );
       case SignInFailure(:final failure):
+        if (failure is AccountBlockedFailure && failure.isActivatable) {
+          context.go(
+            AppRoutes.activateAccount,
+            extra: ActivationArgs(phone: phone, role: role),
+          );
+          return;
+        }
         setState(() {
           _submitting = false;
           _errorText = failure.message;

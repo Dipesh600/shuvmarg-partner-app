@@ -135,7 +135,6 @@ class SessionController extends Notifier<SessionState> {
     required AppRole role,
   }) async {
     final api = ref.read(apiServiceProvider);
-    final store = ref.read(sessionStoreProvider);
     final result = await api.post(
       ApiPaths.changeForcedPassword,
       body: {'tempToken': tempToken, 'newPassword': newPassword},
@@ -146,19 +145,49 @@ class SessionController extends Notifier<SessionState> {
       case Err(:final failure):
         return Result.err(failure);
       case Ok(:final value):
-        final parsed = sessionFromResponse(
-          value,
-          fallbackRole: role,
-          refreshToken: store.lastKnownRefreshToken,
+        return _persistAuthenticatedResponse(value, role);
+    }
+  }
+
+  Future<Result<AppRole>> activateAccount({
+    required String phone,
+    required String otp,
+    required String newPassword,
+    required AppRole role,
+  }) async {
+    final result = await ref
+        .read(apiServiceProvider)
+        .post(
+          ApiPaths.activate,
+          body: {'phone': phone, 'otp': otp, 'newPassword': newPassword},
+          authenticated: false,
+          appSource: role,
         );
-        switch (parsed) {
-          case Err(:final failure):
-            return Result.err(failure);
-          case Ok(:final value):
-            await store.write(value);
-            state = SessionSignedIn(session: value);
-            return Result.ok(value.activeRole);
-        }
+    switch (result) {
+      case Err(:final failure):
+        return Result.err(failure);
+      case Ok(:final value):
+        return _persistAuthenticatedResponse(value, role);
+    }
+  }
+
+  Future<Result<AppRole>> _persistAuthenticatedResponse(
+    Map<String, dynamic> response,
+    AppRole fallbackRole,
+  ) async {
+    final store = ref.read(sessionStoreProvider);
+    final parsed = sessionFromResponse(
+      response,
+      fallbackRole: fallbackRole,
+      refreshToken: store.lastKnownRefreshToken,
+    );
+    switch (parsed) {
+      case Err(:final failure):
+        return Result.err(failure);
+      case Ok(:final value):
+        await store.write(value);
+        state = SessionSignedIn(session: value);
+        return Result.ok(value.activeRole);
     }
   }
 
@@ -175,10 +204,7 @@ class SessionController extends Notifier<SessionState> {
 
     final refreshToken = store.lastKnownRefreshToken;
     // Best effort; the result is intentionally ignored.
-    await api.post(
-      ApiPaths.logout,
-      body: {'refreshToken': ?refreshToken},
-    );
+    await api.post(ApiPaths.logout, body: {'refreshToken': ?refreshToken});
 
     await store.clear();
     state = const SessionSignedOut(SignedOutReason.signedOut);

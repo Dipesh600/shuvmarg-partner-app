@@ -52,7 +52,8 @@ abstract final class ApiPaths {
   // ───────────────────────────────────────────────────────────────────────────
   // Account activation — activateAuthRoutes.js
   //
-  // The path for conductors and drivers, whose accounts a bus owner creates.
+  // The path for agents, conductors and drivers whose accounts an operator
+  // creates.
   // They arrive with status `invited`, no password, and an SMS. Signing in
   // yields ACCOUNT_NOT_ACTIVATED until they complete this flow.
   // ───────────────────────────────────────────────────────────────────────────
@@ -67,8 +68,8 @@ abstract final class ApiPaths {
   // ───────────────────────────────────────────────────────────────────────────
   // Agent self-registration and auth — agentAuthRoutes.js
   //
-  // Agents are the only persona that can sign itself up. Conductors and drivers
-  // are provisioned by a bus owner and must use activation instead.
+  // Self-registration remains available for independent agents. An agent
+  // provisioned by an operator starts as invited and must use activation.
   //
   // OTP endpoints take `phone`; login and the password-reset pair take
   // `emailOrPhone`. That difference is real — do not normalise the field names.
@@ -188,7 +189,8 @@ abstract final class ApiPaths {
   // ───────────────────────────────────────────────────────────────────────────
 
   /// `POST` — body `{ticketId, tripId}`.
-  static const String conductorConfirmBoarding = '/api/conductor/confirmBoarding';
+  static const String conductorConfirmBoarding =
+      '/api/conductor/confirmBoarding';
 
   /// `GET` — the passenger manifest for one trip.
   static String conductorManifest(String tripId) =>

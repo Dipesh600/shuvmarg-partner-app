@@ -6,6 +6,8 @@ import '../../domain/app_role.dart';
 import '../../features/agent/agent_home_screen.dart';
 import '../../features/conductor/conductor_home_screen.dart';
 import '../../features/driver/driver_home_screen.dart';
+import '../../features/entry/activation/activation_route.dart';
+import '../../features/entry/activation/activation_screen.dart';
 import '../../features/entry/sign_in_screen.dart';
 import '../../features/entry/force_password/force_password_route.dart';
 import '../../features/entry/force_password/force_password_screen.dart';
@@ -82,6 +84,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
         builder: (context, state) =>
             SignInScreen(roleWire: state.uri.queryParameters['role']),
+      ),
+      GoRoute(
+        path: AppRoutes.activateAccount,
+        builder: (context, state) => ActivationScreen(
+          args: state.extra is ActivationArgs
+              ? state.extra! as ActivationArgs
+              : null,
+        ),
       ),
       GoRoute(
         path: AppRoutes.forcePassword,
