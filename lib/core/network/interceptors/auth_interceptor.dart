@@ -77,7 +77,7 @@ class AuthHeaderInterceptor extends Interceptor {
     handler.next(response);
   }
 
-  /// Extracts `refreshToken` from any `Set-Cookie` header on [headers].
+  /// Extracts a portal refresh token from any `Set-Cookie` header on [headers].
   ///
   /// Returns `null` when absent — a proxy that strips `Set-Cookie` leaves the
   /// 15-minute access token working, and that degradation is preferable to
@@ -90,16 +90,28 @@ class AuthHeaderInterceptor extends Interceptor {
     for (final raw in cookies) {
       for (final part in raw.split(';')) {
         final segment = part.trim();
-        if (!segment.startsWith('refreshToken=')) continue;
-        final value = segment.substring('refreshToken='.length).trim();
-        // An expiring cookie is sent with an empty value; that is a revocation,
-        // not a new token.
-        if (value.isEmpty) return null;
-        return value;
+        for (final name in _refreshCookieNames) {
+          final prefix = '$name=';
+          if (!segment.startsWith(prefix)) continue;
+          final value = segment.substring(prefix.length).trim();
+          // An expiring cookie is sent with an empty value; that is a
+          // revocation, not a new token.
+          if (value.isEmpty) return null;
+          return value;
+        }
       }
     }
     return null;
   }
+
+  // The API isolates browser sessions by portal. Keep the legacy generic name
+  // because older deployments may still return it during a rolling release.
+  static const _refreshCookieNames = <String>[
+    'agentRefreshToken',
+    'busOwnerRefreshToken',
+    'passengerRefreshToken',
+    'refreshToken',
+  ];
 }
 
 /// ─────────────────────────────────────────────────────────────────────────────

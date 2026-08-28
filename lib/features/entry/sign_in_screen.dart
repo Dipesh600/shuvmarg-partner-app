@@ -8,6 +8,7 @@ import '../../core/design/design.dart';
 import '../../domain/app_role.dart';
 import '../../shared/session/session_controller.dart';
 import '../../shared/session/session_providers.dart';
+import 'force_password/force_password_route.dart';
 import 'widgets/role_support_sheet.dart';
 
 /// Role-aware mobile sign-in screen.
@@ -85,12 +86,18 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
       case SignInSuccess():
         // The router guard automatically directs to the persona workspace
         break;
-      case SignInForcePasswordChange():
-        setState(() {
-          _submitting = false;
-          _errorText = 'Please set a new password before signing in. '
-              'Contact your bus operator if you need assistance.';
-        });
+      case SignInForcePasswordChange(:final tempToken):
+        if (tempToken == null) {
+          setState(() {
+            _submitting = false;
+            _errorText = 'Password setup could not start. Please sign in again.';
+          });
+          return;
+        }
+        context.go(
+          AppRoutes.forcePassword,
+          extra: ForcePasswordArgs(tempToken: tempToken, role: role),
+        );
       case SignInFailure(:final failure):
         setState(() {
           _submitting = false;

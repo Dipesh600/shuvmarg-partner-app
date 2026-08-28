@@ -45,6 +45,10 @@ abstract final class ApiPaths {
   /// token version, invalidating outstanding access tokens.
   static const String logout = '/api/logout';
 
+  /// `POST` — consumes a first-login temporary token, sets the user's chosen
+  /// password, and returns a normal authenticated session.
+  static const String changeForcedPassword = '/api/changeForcePassword';
+
   // ───────────────────────────────────────────────────────────────────────────
   // Account activation — activateAuthRoutes.js
   //
@@ -124,14 +128,28 @@ abstract final class ApiPaths {
   /// That is the difference between this and [agentProfile].
   ///
   /// `kycCleared` is the server's answer to "does this agent's own verification
-  /// permit selling". It is not permission to sell — that needs an active
-  /// operator assignment, which does not exist yet. Never derive it client-side.
+  /// permit selling". It is not permission to sell — that also needs an ACTIVE
+  /// operator assignment. Never derive it client-side.
   static const String agentMe = '/api/agent/me';
 
   /// `GET` — the code alone, plus `sharePayload`: the exact sentence to put on a
   /// clipboard or into a share sheet, composed server-side so the app, the web
   /// agent console and the operator console all share one wording.
   static const String agentMeCode = '/api/agent/me/code';
+
+  /// `GET` — every operator relationship owned by the signed-in agent.
+  /// Invitations are readable before KYC so the agent can decide whether the
+  /// work is worth completing verification for.
+  static const String agentAssignments = '/api/agent/assignments';
+
+  /// `POST` — the agent accepts their own still-live invitation.
+  static String acceptAgentAssignment(String assignmentId) =>
+      '$agentAssignments/$assignmentId/accept';
+
+  /// `POST` — the agent declines their own still-live invitation. The optional
+  /// request body is `{reason}` and the backend caps it at 500 characters.
+  static String declineAgentAssignment(String assignmentId) =>
+      '$agentAssignments/$assignmentId/decline';
 
   /// `POST` — saves a partial KYC application. Idempotent; safe to autosave.
   static const String agentApplicationSave = '/api/agent/application/save';

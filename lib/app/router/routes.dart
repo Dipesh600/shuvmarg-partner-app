@@ -28,6 +28,10 @@ abstract final class AppRoutes {
   /// unrecognised role bounces back to [welcome] (see the per-route redirect).
   static const String signIn = '/sign-in';
 
+  /// First-login password replacement reached with an in-memory temporary
+  /// token. The token is deliberately never placed in the URL.
+  static const String forcePassword = '/set-password';
+
   /// Shown when a real platform account belongs to a *different* Shuvmarg app
   /// (passenger, bus owner) — an honest dead-end rather than a failed login.
   static const String wrongApp = '/wrong-app';

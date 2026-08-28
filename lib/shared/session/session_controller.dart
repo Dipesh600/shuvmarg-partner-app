@@ -6,8 +6,8 @@ import '../../core/errors/result.dart';
 import '../../core/network/api_paths.dart';
 import '../../domain/agent_application_status.dart';
 import '../../domain/app_role.dart';
-import '../../domain/session.dart';
 import 'session_providers.dart';
+import 'session_response.dart';
 import 'session_state.dart';
 
 /// The result of a sign-in attempt.
@@ -113,47 +113,52 @@ class SessionController extends Notifier<SessionState> {
           );
         }
 
-        final accessToken = body['accessToken'];
-        if (accessToken is! String || accessToken.isEmpty) {
-          return const SignInOutcome.failure(
-            ServerFailure(
-              message: 'Sign-in succeeded but no session was returned. '
-                  'Please try again.',
-            ),
-          );
-        }
-
-        final userJson = body['user'];
-        if (userJson is! Map<String, dynamic>) {
-          return const SignInOutcome.failure(
-            ServerFailure(
-              message: 'Sign-in returned an unexpected response. '
-                  'Please try again.',
-            ),
-          );
-        }
-
-        // The server derives the active role from the header we sent, so a
-        // parseable value should equal [role]; fall back to the requested role
-        // if the field is missing or names a role this app does not serve.
-        final activeRoleRaw = body['activeRole'];
-        final resolvedRole =
-            AppRole.tryParse(activeRoleRaw is String ? activeRoleRaw : null) ??
-                role;
-
-        final session = Session(
-          accessToken: accessToken,
-          activeRole: resolvedRole,
-          user: AuthenticatedUser.fromJson(userJson),
-          // The rotated refresh token arrived as a Set-Cookie during this very
-          // request and was captured synchronously by the interceptor; read it
-          // back before `write`, which otherwise persists a token-less session.
+        final parsed = sessionFromResponse(
+          body,
+          fallbackRole: role,
           refreshToken: store.lastKnownRefreshToken,
         );
+        switch (parsed) {
+          case Err(:final failure):
+            return SignInOutcome.failure(failure);
+          case Ok(:final value):
+            await store.write(value);
+            state = SessionSignedIn(session: value);
+            return SignInOutcome.success(value.activeRole);
+        }
+    }
+  }
 
-        await store.write(session);
-        state = SessionSignedIn(session: session);
-        return SignInOutcome.success(resolvedRole);
+  Future<Result<AppRole>> completeForcedPassword({
+    required String tempToken,
+    required String newPassword,
+    required AppRole role,
+  }) async {
+    final api = ref.read(apiServiceProvider);
+    final store = ref.read(sessionStoreProvider);
+    final result = await api.post(
+      ApiPaths.changeForcedPassword,
+      body: {'tempToken': tempToken, 'newPassword': newPassword},
+      authenticated: false,
+      appSource: role,
+    );
+    switch (result) {
+      case Err(:final failure):
+        return Result.err(failure);
+      case Ok(:final value):
+        final parsed = sessionFromResponse(
+          value,
+          fallbackRole: role,
+          refreshToken: store.lastKnownRefreshToken,
+        );
+        switch (parsed) {
+          case Err(:final failure):
+            return Result.err(failure);
+          case Ok(:final value):
+            await store.write(value);
+            state = SessionSignedIn(session: value);
+            return Result.ok(value.activeRole);
+        }
     }
   }
 

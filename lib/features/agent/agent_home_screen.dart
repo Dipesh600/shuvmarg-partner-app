@@ -6,6 +6,8 @@ import '../../shared/session/session_providers.dart';
 import '../../shared/session/session_state.dart';
 import '../../shared/ui/ui.dart';
 import '../shell/persona_home_scaffold.dart';
+import 'assignments/agent_assignments_section.dart';
+import 'identity/agent_identity_controller.dart';
 import 'identity/agent_identity_section.dart';
 
 /// The agent workspace home.
@@ -14,16 +16,9 @@ import 'identity/agent_identity_section.dart';
 /// can do hangs below it and is unreachable to the other personas — the router
 /// guard enforces that.
 ///
-/// What it shows today is the agent's *identity*: the permanent code they hand to
-/// a bus operator, and how far through verification they are. That is the whole
-/// of what the platform can honestly offer an agent right now — selling requires
-/// an operator assignment, and that model does not exist yet — so the screen says
-/// so rather than showing tools that would refuse to work.
-///
-/// The account card comes from the session and the identity section from
-/// `GET /api/agent/me`. Two sources on purpose: if the identity request fails the
-/// agent still sees who they are signed in as, and the failure is confined to the
-/// card that could not load.
+/// It keeps identity and operator access separate: KYC clears the person, while
+/// an ACTIVE assignment grants access to one operator's inventory. Both must be
+/// true before the UI says the agent is ready to sell.
 class AgentHomeScreen extends ConsumerWidget {
   const AgentHomeScreen({super.key});
 
@@ -36,23 +31,25 @@ class AgentHomeScreen extends ConsumerWidget {
     }
 
     final user = session.session.user;
+    final identity = ref
+        .watch(agentIdentityControllerProvider)
+        .dataOrNull
+        ?.identity;
     return PersonaHomeScaffold(
       user: user,
       onSignOut: () => ref.read(sessionControllerProvider.notifier).signOut(),
       body: [
         const AppSectionHeader(
           eyebrow: 'Agent workspace',
-          title: "You're signed in",
+          title: 'Your ticket counter',
+          subtitle: 'Accept operator invitations before you start selling.',
         ),
         const SizedBox(height: AppSpacing.md),
-        WorkspaceAccountCard(user: user, roleLabel: 'Agent'),
-        const SizedBox(height: AppSpacing.md),
+        AgentAssignmentsSection(kycCleared: identity?.kycCleared),
+        const SizedBox(height: AppSpacing.xl),
         const AgentIdentitySection(),
-        const SizedBox(height: AppSpacing.md),
-        const WorkspaceNoteCard(
-          message: 'Ticket sales, commission and customer tools are still being '
-              'built. They will appear here as they go live.',
-        ),
+        const SizedBox(height: AppSpacing.xl),
+        WorkspaceAccountCard(user: user, roleLabel: 'Agent'),
       ],
     );
   }
