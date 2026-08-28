@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pinput/pinput.dart';
 import 'package:shuvmarg_partner_app/core/errors/result.dart';
 import 'package:shuvmarg_partner_app/domain/app_role.dart';
 import 'package:shuvmarg_partner_app/features/entry/activation/activation_repository.dart';
@@ -34,34 +35,67 @@ void main() {
     }
   });
 
-  testWidgets('invited agent receives one OTP and exact password rules', (
-    tester,
-  ) async {
-    final gateway = _OtpGateway();
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [activationRepositoryProvider.overrideWithValue(gateway)],
-        child: const MaterialApp(
-          home: ActivationScreen(
-            args: ActivationArgs(phone: '9800000000', role: AppRole.agent),
+  testWidgets(
+    'activation separates OTP from password and pins password rules',
+    (tester) async {
+      tester.view.physicalSize = const Size(320, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final gateway = _OtpGateway();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [activationRepositoryProvider.overrideWithValue(gateway)],
+          child: const MaterialApp(
+            home: ActivationScreen(
+              args: ActivationArgs(phone: '9800000000', role: AppRole.agent),
+            ),
           ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
 
-    expect(gateway.calls, 1);
-    expect(find.textContaining('+977 9800000000'), findsOneWidget);
-    expect(find.textContaining('Valid for 5 minutes'), findsOneWidget);
+      expect(gateway.calls, 1);
+      expect(find.text('Enter the 6-digit code'), findsOneWidget);
+      expect(find.textContaining('+977 98••••••00'), findsOneWidget);
+      expect(find.textContaining('Code expires in 5 minutes'), findsOneWidget);
+      expect(find.text('New password'), findsNothing);
 
-    final fields = find.byType(TextFormField);
-    await tester.enterText(fields.at(0), '123456');
-    await tester.enterText(fields.at(1), 'password1');
-    await tester.enterText(fields.at(2), 'password1');
-    await tester.tap(find.text('Activate and continue'));
-    await tester.pump();
+      await tester.enterText(find.byType(Pinput), '123456');
+      await tester.tap(find.text('Continue securely'));
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pump(const Duration(milliseconds: 250));
 
-    expect(find.text('Add at least one uppercase letter.'), findsOneWidget);
+      expect(find.text('Enter the 6-digit code'), findsNothing);
+      expect(find.text('Create your password'), findsOneWidget);
+      final fields = find.byType(TextFormField);
+      expect(fields, findsNWidgets(2));
+      await tester.enterText(fields.at(0), 'password1');
+      await tester.enterText(fields.at(1), 'password1');
+      await tester.tap(find.text('Activate my account'));
+      await tester.pump();
+
+      expect(find.text('Add at least one uppercase letter.'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  test('activation steps do not expose each other or persist the OTP', () {
+    final otpStep = File(
+      'lib/features/entry/activation/activation_otp_step.dart',
+    ).readAsStringSync();
+    final passwordStep = File(
+      'lib/features/entry/activation/activation_password_step.dart',
+    ).readAsStringSync();
+    final route = File(
+      'lib/features/entry/activation/activation_route.dart',
+    ).readAsStringSync();
+
+    expect(otpStep, isNot(contains('New password')));
+    expect(passwordStep, isNot(contains('Pinput')));
+    expect(route, isNot(contains('otp')));
+    expect(route, isNot(contains('password')));
   });
 
   testWidgets('missing in-memory activation handoff fails closed', (
