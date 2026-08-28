@@ -11,19 +11,16 @@ import 'agent_application_status.dart';
 /// they are.
 ///
 /// WHAT THIS IS NOT: permission to sell. An agent code plus cleared KYC still
-/// sells nothing — that needs an operator assignment, which the backend does not
-/// have yet. Nothing here should ever be read as "can book".
+/// sells nothing — that needs an ACTIVE operator assignment. Nothing here should
+/// ever be read as "can book" by itself.
 ///
 /// Parsed narrowly, like `AuthenticatedUser`: only fields a screen renders. Two
 /// deliberate omissions —
 ///   • `name` / `phone` / `photoUrl` — the session already carries these and the
 ///     account card renders them from there. Parsing them again would give one
 ///     fact two sources that can disagree.
-///   • `assignments` — the endpoint returns `{total: 0, active: 0, invited: 0}`
-///     unconditionally today because the assignment model does not exist. The
-///     zeros are a placeholder, not a count, and showing "0 assignments" would
-///     tell the agent something we do not actually know. Parse it when it means
-///     something.
+///   • `assignments` — the dedicated `/api/agent/assignments` endpoint is the
+///     source of truth, so the identity card does not duplicate that state.
 /// ─────────────────────────────────────────────────────────────────────────────
 
 /// Who owns the agent relationship.

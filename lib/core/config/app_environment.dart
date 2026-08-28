@@ -138,7 +138,10 @@ abstract final class AppEnvironment {
   /// Whether to attach verbose request/response logging.
   static bool get verboseNetworkLogs => kDebugMode && !flavor.isProduction;
 
-  static const Duration connectTimeout = Duration(seconds: 15);
+  /// Local development should fail quickly when the laptop address is wrong;
+  /// production keeps a wider window for real mobile networks.
+  static Duration get connectTimeout =>
+      flavor.isLocal ? const Duration(seconds: 5) : const Duration(seconds: 15);
   static const Duration receiveTimeout = Duration(seconds: 20);
 
   /// Document uploads carry image payloads over Nepali mobile networks; the

@@ -5,9 +5,13 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/router/routes.dart';
 import '../../core/design/design.dart';
+import '../../core/errors/failure.dart';
 import '../../domain/app_role.dart';
 import '../../shared/session/session_controller.dart';
 import '../../shared/session/session_providers.dart';
+import 'activation/activation_route.dart';
+import 'force_password/force_password_route.dart';
+import 'password_recovery/password_recovery_route.dart';
 import 'widgets/role_support_sheet.dart';
 
 /// Role-aware mobile sign-in screen.
@@ -59,7 +63,9 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     }
 
     if (phone.length < 10) {
-      setState(() => _errorText = 'Please enter a valid 10-digit mobile number.');
+      setState(
+        () => _errorText = 'Please enter a valid 10-digit mobile number.',
+      );
       return;
     }
 
@@ -73,11 +79,9 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
       _errorText = null;
     });
 
-    final outcome = await ref.read(sessionControllerProvider.notifier).signIn(
-          emailOrPhone: phone,
-          password: password,
-          role: role,
-        );
+    final outcome = await ref
+        .read(sessionControllerProvider.notifier)
+        .signIn(emailOrPhone: phone, password: password, role: role);
 
     if (!mounted) return;
 
@@ -85,13 +89,27 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
       case SignInSuccess():
         // The router guard automatically directs to the persona workspace
         break;
-      case SignInForcePasswordChange():
-        setState(() {
-          _submitting = false;
-          _errorText = 'Please set a new password before signing in. '
-              'Contact your bus operator if you need assistance.';
-        });
+      case SignInForcePasswordChange(:final tempToken):
+        if (tempToken == null) {
+          setState(() {
+            _submitting = false;
+            _errorText =
+                'Password setup could not start. Please sign in again.';
+          });
+          return;
+        }
+        context.go(
+          AppRoutes.forcePassword,
+          extra: ForcePasswordArgs(tempToken: tempToken, role: role),
+        );
       case SignInFailure(:final failure):
+        if (failure is AccountBlockedFailure && failure.isActivatable) {
+          context.go(
+            AppRoutes.activateAccount,
+            extra: ActivationArgs(phone: phone, role: role),
+          );
+          return;
+        }
         setState(() {
           _submitting = false;
           _errorText = failure.message;
@@ -188,8 +206,10 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                   Text(
                     switch (role) {
                       AppRole.agent => 'Sign in to continue managing bookings.',
-                      AppRole.conductor => 'Sign in to manage passenger boarding.',
-                      AppRole.driver => 'Sign in to track your trips and location.',
+                      AppRole.conductor =>
+                        'Sign in to manage passenger boarding.',
+                      AppRole.driver =>
+                        'Sign in to track your trips and location.',
                     },
                     style: const TextStyle(
                       fontFamily: 'Manrope',
@@ -379,7 +399,19 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                   Align(
                     alignment: Alignment.centerRight,
                     child: GestureDetector(
-                      onTap: () => _showHelpSheet(context, role),
+                      onTap: () {
+                        if (role == AppRole.agent) {
+                          context.push(
+                            AppRoutes.recoverPassword,
+                            extra: PasswordRecoveryArgs(
+                              role: role,
+                              phone: _phoneController.text.trim(),
+                            ),
+                          );
+                        } else {
+                          _showHelpSheet(context, role);
+                        }
+                      },
                       behavior: HitTestBehavior.opaque,
                       child: const Padding(
                         padding: EdgeInsets.symmetric(vertical: 4),
@@ -407,7 +439,9 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                       decoration: BoxDecoration(
                         color: AppColors.dangerSurface,
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: AppColors.danger.withValues(alpha: 0.4)),
+                        border: Border.all(
+                          color: AppColors.danger.withValues(alpha: 0.4),
+                        ),
                       ),
                       child: Row(
                         children: [
@@ -444,10 +478,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                         gradient: const LinearGradient(
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
-                          colors: [
-                            AppColors.orange400,
-                            AppColors.primary,
-                          ],
+                          colors: [AppColors.orange400, AppColors.primary],
                         ),
                         boxShadow: [
                           BoxShadow(
@@ -505,13 +536,12 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                         decoration: BoxDecoration(
                           color: AppColors.white.withValues(alpha: 0.92),
                           borderRadius: BorderRadius.circular(100),
-                          border: Border.all(
-                            color: AppColors.border,
-                            width: 1,
-                          ),
+                          border: Border.all(color: AppColors.border, width: 1),
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.neutral900.withValues(alpha: 0.03),
+                              color: AppColors.neutral900.withValues(
+                                alpha: 0.03,
+                              ),
                               blurRadius: 8,
                               offset: const Offset(0, 2),
                             ),

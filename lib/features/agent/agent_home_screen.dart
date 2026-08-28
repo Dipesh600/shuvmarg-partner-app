@@ -1,59 +1,80 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/design/design.dart';
 import '../../shared/session/session_providers.dart';
 import '../../shared/session/session_state.dart';
-import '../../shared/ui/ui.dart';
+import '../../shared/state/view_state.dart';
 import '../shell/persona_home_scaffold.dart';
-import 'identity/agent_identity_section.dart';
+import 'identity/agent_identity_controller.dart';
+import 'operator/operator_agent_workspace.dart';
+import 'platform/platform_agent_workspace.dart';
+import 'workspace/agent_workspace_kind.dart';
+import 'workspace/agent_workspace_problem.dart';
 
-/// The agent workspace home.
-///
-/// This is the root of the agent persona subtree (`/agent`). Everything an agent
-/// can do hangs below it and is unreachable to the other personas — the router
-/// guard enforces that.
-///
-/// What it shows today is the agent's *identity*: the permanent code they hand to
-/// a bus operator, and how far through verification they are. That is the whole
-/// of what the platform can honestly offer an agent right now — selling requires
-/// an operator assignment, and that model does not exist yet — so the screen says
-/// so rather than showing tools that would refuse to work.
-///
-/// The account card comes from the session and the identity section from
-/// `GET /api/agent/me`. Two sources on purpose: if the identity request fails the
-/// agent still sees who they are signed in as, and the failure is confined to the
-/// card that could not load.
+/// Resolves the authenticated agent into exactly one scope-specific workspace.
+/// Missing or unknown scope fails closed instead of borrowing another agent
+/// type's navigation, rules, or promises.
 class AgentHomeScreen extends ConsumerWidget {
   const AgentHomeScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final session = ref.watch(sessionControllerProvider);
-    if (session is! SessionSignedIn) {
-      // Defensive: the guard keeps a signed-out user out of this subtree.
-      return const WorkspaceLoader();
+    final sessionState = ref.watch(sessionControllerProvider);
+    if (sessionState is! SessionSignedIn) return const WorkspaceLoader();
+
+    final identityState = ref.watch(agentIdentityControllerProvider);
+    final identityView = identityState.dataOrNull;
+    Future<void> signOut() =>
+        ref.read(sessionControllerProvider.notifier).signOut();
+    Future<void> retry() =>
+        ref.read(agentIdentityControllerProvider.notifier).load();
+    if (identityView != null) {
+      return switch (workspaceKindForScope(identityView.identity.scope)) {
+        AgentWorkspaceKind.operatorOwned => OperatorAgentWorkspace(
+          user: sessionState.session.user,
+          identity: identityView.identity,
+          onSignOut: signOut,
+        ),
+        AgentWorkspaceKind.platform => PlatformAgentWorkspace(
+          user: sessionState.session.user,
+          identity: identityView.identity,
+          onSignOut: signOut,
+        ),
+        AgentWorkspaceKind.unsupported => AgentWorkspaceProblem(
+          user: sessionState.session.user,
+          message:
+              'We could not identify which agent workspace belongs to this account.',
+          onRetry: retry,
+          onSignOut: signOut,
+        ),
+      };
     }
 
-    final user = session.session.user;
-    return PersonaHomeScaffold(
-      user: user,
-      onSignOut: () => ref.read(sessionControllerProvider.notifier).signOut(),
-      body: [
-        const AppSectionHeader(
-          eyebrow: 'Agent workspace',
-          title: "You're signed in",
-        ),
-        const SizedBox(height: AppSpacing.md),
-        WorkspaceAccountCard(user: user, roleLabel: 'Agent'),
-        const SizedBox(height: AppSpacing.md),
-        const AgentIdentitySection(),
-        const SizedBox(height: AppSpacing.md),
-        const WorkspaceNoteCard(
-          message: 'Ticket sales, commission and customer tools are still being '
-              'built. They will appear here as they go live.',
-        ),
-      ],
-    );
+    return switch (identityState) {
+      ViewInitial() ||
+      ViewLoadingFirst() ||
+      ViewSubmitting() => const WorkspaceLoader(),
+      ViewEmpty(:final message) => AgentWorkspaceProblem(
+        user: sessionState.session.user,
+        message: message ?? 'Your agent profile could not be found.',
+        onRetry: retry,
+        onSignOut: signOut,
+      ),
+      ViewErrorRetryable(:final failure) ||
+      ViewOffline(:final failure) ||
+      ViewSubmitFieldErrors(:final failure) => AgentWorkspaceProblem(
+        user: sessionState.session.user,
+        message: failure.message,
+        onRetry: retry,
+        onSignOut: signOut,
+      ),
+      ViewErrorForbidden(:final failure) => AgentWorkspaceProblem(
+        user: sessionState.session.user,
+        message: failure.message,
+        onSignOut: signOut,
+      ),
+      ViewErrorAuth() => const WorkspaceLoader(),
+      ViewData() || ViewLoadingRefresh() => const WorkspaceLoader(),
+    };
   }
 }

@@ -45,10 +45,15 @@ abstract final class ApiPaths {
   /// token version, invalidating outstanding access tokens.
   static const String logout = '/api/logout';
 
+  /// `POST` — consumes a first-login temporary token, sets the user's chosen
+  /// password, and returns a normal authenticated session.
+  static const String changeForcedPassword = '/api/changeForcePassword';
+
   // ───────────────────────────────────────────────────────────────────────────
   // Account activation — activateAuthRoutes.js
   //
-  // The path for conductors and drivers, whose accounts a bus owner creates.
+  // The path for agents, conductors and drivers whose accounts an operator
+  // creates.
   // They arrive with status `invited`, no password, and an SMS. Signing in
   // yields ACCOUNT_NOT_ACTIVATED until they complete this flow.
   // ───────────────────────────────────────────────────────────────────────────
@@ -63,8 +68,8 @@ abstract final class ApiPaths {
   // ───────────────────────────────────────────────────────────────────────────
   // Agent self-registration and auth — agentAuthRoutes.js
   //
-  // Agents are the only persona that can sign itself up. Conductors and drivers
-  // are provisioned by a bus owner and must use activation instead.
+  // Self-registration remains available for independent agents. An agent
+  // provisioned by an operator starts as invited and must use activation.
   //
   // OTP endpoints take `phone`; login and the password-reset pair take
   // `emailOrPhone`. That difference is real — do not normalise the field names.
@@ -89,18 +94,21 @@ abstract final class ApiPaths {
   static const String agentRefresh = '/api/auth/agent/refresh';
   static const String agentLogout = '/api/auth/agent/logout';
 
-  /// `POST` — body `{emailOrPhone}`.
+  /// `POST` — body `{phone}`. Always returns neutral copy so the screen cannot
+  /// reveal whether an account exists.
   static const String agentRequestPasswordReset =
       '/api/auth/agent/requestPasswordReset';
 
-  /// `POST` — body `{emailOrPhone, otp}`.
+  /// `POST` — body `{phone, otp}`. Verifies without consuming; completion
+  /// verifies and consumes the same OTP atomically.
   static const String agentVerifyOtpForReset =
       '/api/auth/agent/verifyOtpForReset';
 
-  /// `POST` — body `{emailOrPhone, otp, newPassword}`.
+  /// `POST` — body `{phone, otp, newPassword}`. Returns an agent session and
+  /// also activates an invited account.
   static const String agentResetPassword = '/api/auth/agent/resetPassword';
 
-  /// `POST` — body `{emailOrPhone}`.
+  /// `POST` — body `{phone}`.
   static const String agentResendOtpForReset =
       '/api/auth/agent/resendOtpForReset';
 
@@ -124,14 +132,28 @@ abstract final class ApiPaths {
   /// That is the difference between this and [agentProfile].
   ///
   /// `kycCleared` is the server's answer to "does this agent's own verification
-  /// permit selling". It is not permission to sell — that needs an active
-  /// operator assignment, which does not exist yet. Never derive it client-side.
+  /// permit selling". It is not permission to sell — that also needs an ACTIVE
+  /// operator assignment. Never derive it client-side.
   static const String agentMe = '/api/agent/me';
 
   /// `GET` — the code alone, plus `sharePayload`: the exact sentence to put on a
   /// clipboard or into a share sheet, composed server-side so the app, the web
   /// agent console and the operator console all share one wording.
   static const String agentMeCode = '/api/agent/me/code';
+
+  /// `GET` — every operator relationship owned by the signed-in agent.
+  /// Invitations are readable before KYC so the agent can decide whether the
+  /// work is worth completing verification for.
+  static const String agentAssignments = '/api/agent/assignments';
+
+  /// `POST` — the agent accepts their own still-live invitation.
+  static String acceptAgentAssignment(String assignmentId) =>
+      '$agentAssignments/$assignmentId/accept';
+
+  /// `POST` — the agent declines their own still-live invitation. The optional
+  /// request body is `{reason}` and the backend caps it at 500 characters.
+  static String declineAgentAssignment(String assignmentId) =>
+      '$agentAssignments/$assignmentId/decline';
 
   /// `POST` — saves a partial KYC application. Idempotent; safe to autosave.
   static const String agentApplicationSave = '/api/agent/application/save';
@@ -170,7 +192,8 @@ abstract final class ApiPaths {
   // ───────────────────────────────────────────────────────────────────────────
 
   /// `POST` — body `{ticketId, tripId}`.
-  static const String conductorConfirmBoarding = '/api/conductor/confirmBoarding';
+  static const String conductorConfirmBoarding =
+      '/api/conductor/confirmBoarding';
 
   /// `GET` — the passenger manifest for one trip.
   static String conductorManifest(String tripId) =>

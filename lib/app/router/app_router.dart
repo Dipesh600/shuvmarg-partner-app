@@ -6,7 +6,13 @@ import '../../domain/app_role.dart';
 import '../../features/agent/agent_home_screen.dart';
 import '../../features/conductor/conductor_home_screen.dart';
 import '../../features/driver/driver_home_screen.dart';
+import '../../features/entry/activation/activation_route.dart';
+import '../../features/entry/activation/activation_screen.dart';
 import '../../features/entry/sign_in_screen.dart';
+import '../../features/entry/force_password/force_password_route.dart';
+import '../../features/entry/force_password/force_password_screen.dart';
+import '../../features/entry/password_recovery/password_recovery_route.dart';
+import '../../features/entry/password_recovery/password_recovery_screen.dart';
 import '../../features/entry/splash_screen.dart';
 import '../../features/entry/welcome_screen.dart';
 import '../../features/entry/wrong_app_screen.dart';
@@ -80,6 +86,30 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
         builder: (context, state) =>
             SignInScreen(roleWire: state.uri.queryParameters['role']),
+      ),
+      GoRoute(
+        path: AppRoutes.activateAccount,
+        builder: (context, state) => ActivationScreen(
+          args: state.extra is ActivationArgs
+              ? state.extra! as ActivationArgs
+              : null,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.forcePassword,
+        builder: (context, state) => ForcePasswordScreen(
+          args: state.extra is ForcePasswordArgs
+              ? state.extra! as ForcePasswordArgs
+              : null,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.recoverPassword,
+        builder: (context, state) => PasswordRecoveryScreen(
+          args: state.extra is PasswordRecoveryArgs
+              ? state.extra! as PasswordRecoveryArgs
+              : null,
+        ),
       ),
       GoRoute(
         path: AppRoutes.wrongApp,

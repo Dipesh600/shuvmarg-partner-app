@@ -6,8 +6,8 @@ import '../../core/errors/result.dart';
 import '../../core/network/api_paths.dart';
 import '../../domain/agent_application_status.dart';
 import '../../domain/app_role.dart';
-import '../../domain/session.dart';
 import 'session_providers.dart';
+import 'session_response.dart';
 import 'session_state.dart';
 
 /// The result of a sign-in attempt.
@@ -51,19 +51,12 @@ final class SignInFailure extends SignInOutcome {
   final Failure failure;
 }
 
-/// ─────────────────────────────────────────────────────────────────────────────
-/// Shuvmarg Partner — session controller
-///
-/// Owns the [SessionState] the whole app routes on. It is the *only* thing that
-/// writes the session store as part of a user-driven flow, so the rules about
-/// what a valid session looks like live in one place.
-///
+/// Owns routed session state and all user-driven writes to the session store.
 /// [build] is synchronous: bootstrap has already awaited [SessionStore.read], so
 /// the cached session (or its absence) is known before the first frame. Making
 /// build synchronous means the router never has to reason about an
 /// `AsyncLoading` session — the only "loading" is [SessionRestoring], which the
 /// splash owns before this provider is ever read.
-/// ─────────────────────────────────────────────────────────────────────────────
 class SessionController extends Notifier<SessionState> {
   @override
   SessionState build() {
@@ -113,52 +106,120 @@ class SessionController extends Notifier<SessionState> {
           );
         }
 
-        final accessToken = body['accessToken'];
-        if (accessToken is! String || accessToken.isEmpty) {
-          return const SignInOutcome.failure(
-            ServerFailure(
-              message: 'Sign-in succeeded but no session was returned. '
-                  'Please try again.',
-            ),
-          );
-        }
-
-        final userJson = body['user'];
-        if (userJson is! Map<String, dynamic>) {
-          return const SignInOutcome.failure(
-            ServerFailure(
-              message: 'Sign-in returned an unexpected response. '
-                  'Please try again.',
-            ),
-          );
-        }
-
-        // The server derives the active role from the header we sent, so a
-        // parseable value should equal [role]; fall back to the requested role
-        // if the field is missing or names a role this app does not serve.
-        final activeRoleRaw = body['activeRole'];
-        final resolvedRole =
-            AppRole.tryParse(activeRoleRaw is String ? activeRoleRaw : null) ??
-                role;
-
-        final session = Session(
-          accessToken: accessToken,
-          activeRole: resolvedRole,
-          user: AuthenticatedUser.fromJson(userJson),
-          // The rotated refresh token arrived as a Set-Cookie during this very
-          // request and was captured synchronously by the interceptor; read it
-          // back before `write`, which otherwise persists a token-less session.
+        final parsed = sessionFromResponse(
+          body,
+          fallbackRole: role,
           refreshToken: store.lastKnownRefreshToken,
         );
-
-        await store.write(session);
-        state = SessionSignedIn(session: session);
-        return SignInOutcome.success(resolvedRole);
+        switch (parsed) {
+          case Err(:final failure):
+            return SignInOutcome.failure(failure);
+          case Ok(:final value):
+            await store.write(value);
+            state = SessionSignedIn(session: value);
+            return SignInOutcome.success(value.activeRole);
+        }
     }
   }
 
-  /// Signs the user out: revokes the refresh token server-side (best effort),
-  /// then clears local state regardless of the network outcome.
+  Future<Result<AppRole>> completeForcedPassword({
+    required String tempToken,
+    required String newPassword,
+    required AppRole role,
+  }) async {
+    final api = ref.read(apiServiceProvider);
+    final result = await api.post(
+      ApiPaths.changeForcedPassword,
+      body: {'tempToken': tempToken, 'newPassword': newPassword},
+      authenticated: false,
+      appSource: role,
+    );
+    switch (result) {
+      case Err(:final failure):
+        return Result.err(failure);
+      case Ok(:final value):
+        return _persistAuthenticatedResponse(value, role);
+    }
+  }
+
+  Future<Result<AppRole>> activateAccount({
+    required String phone,
+    required String otp,
+    required String newPassword,
+    required AppRole role,
+  }) async {
+    final result = await ref
+        .read(apiServiceProvider)
+        .post(
+          ApiPaths.activate,
+          body: {'phone': phone, 'otp': otp, 'newPassword': newPassword},
+          authenticated: false,
+          appSource: role,
+        );
+    switch (result) {
+      case Err(:final failure):
+        return Result.err(failure);
+      case Ok(:final value):
+        return _persistAuthenticatedResponse(value, role);
+    }
+  }
+
+  Future<Result<AppRole>> recoverAgentPassword({
+    required String phone,
+    required String otp,
+    required String newPassword,
+  }) async {
+    final result = await ref
+        .read(apiServiceProvider)
+        .post(
+          ApiPaths.agentResetPassword,
+          body: {'phone': phone, 'otp': otp, 'newPassword': newPassword},
+          authenticated: false,
+          appSource: AppRole.agent,
+        );
+    switch (result) {
+      case Err(:final failure):
+        return Result.err(failure);
+      case Ok(:final value):
+        final session = await _persistAuthenticatedResponse(
+          value,
+          AppRole.agent,
+        );
+        if (session case Err(:final failure)) {
+          return Result.err(
+            ServerFailure(
+              message:
+                  'Your password was accepted, but automatic sign-in did not finish.',
+              data: const {'passwordUpdated': true},
+              cause: failure,
+            ),
+          );
+        }
+        return session;
+    }
+  }
+
+  Future<Result<AppRole>> _persistAuthenticatedResponse(
+    Map<String, dynamic> response,
+    AppRole fallbackRole,
+  ) async {
+    final store = ref.read(sessionStoreProvider);
+    final parsed = sessionFromResponse(
+      response,
+      fallbackRole: fallbackRole,
+      refreshToken: store.lastKnownRefreshToken,
+    );
+    switch (parsed) {
+      case Err(:final failure):
+        return Result.err(failure);
+      case Ok(:final value):
+        await store.write(value);
+        state = SessionSignedIn(session: value);
+        return Result.ok(value.activeRole);
+    }
+  }
+
+  /// Revokes the server session best-effort, then always clears local state.
   ///
   /// The local clear is unconditional on purpose — if the revoke call fails
   /// (offline, server error) the user must still end up signed out locally, not
@@ -170,10 +231,7 @@ class SessionController extends Notifier<SessionState> {
 
     final refreshToken = store.lastKnownRefreshToken;
     // Best effort; the result is intentionally ignored.
-    await api.post(
-      ApiPaths.logout,
-      body: {'refreshToken': ?refreshToken},
-    );
+    await api.post(ApiPaths.logout, body: {'refreshToken': ?refreshToken});
 
     await store.clear();
     state = const SessionSignedOut(SignedOutReason.signedOut);
