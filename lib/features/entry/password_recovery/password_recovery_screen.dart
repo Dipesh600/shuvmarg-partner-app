@@ -13,6 +13,7 @@ import 'password_recovery_repository.dart';
 import 'password_recovery_route.dart';
 import 'recovery_completion_step.dart';
 import 'recovery_phone_step.dart';
+import 'recovery_top_bar.dart';
 
 enum _RecoveryStep { phone, otp, password, completed }
 
@@ -93,7 +94,6 @@ class _PasswordRecoveryScreenState
     final result = await ref
         .read(passwordRecoveryRepositoryProvider)
         .resendCode(_phone);
-    if (!mounted) return;
     if (result case Err(:final failure)) {
       setState(() => _error = failure.message);
     } else {
@@ -113,19 +113,11 @@ class _PasswordRecoveryScreenState
         .recoverAgentPassword(phone: _phone, otp: otp, newPassword: password);
     if (!mounted) return;
     if (result case Err(:final failure)) {
-      if (failure.data['passwordUpdated'] == true) {
-        setState(() {
-          _busy = false;
-          _error = null;
-          _step = _RecoveryStep.completed;
-          _otp = null;
-        });
-        return;
-      }
+      final success = failure.data['passwordUpdated'] == true;
       setState(() {
         _busy = false;
-        _error = failure.message;
-        _step = _RecoveryStep.otp;
+        _error = success ? null : failure.message;
+        _step = success ? _RecoveryStep.completed : _RecoveryStep.otp;
         _otp = null;
       });
     }
@@ -146,7 +138,11 @@ class _PasswordRecoveryScreenState
           _error = null;
         });
       case _RecoveryStep.phone:
-        context.go(AppRoutes.signInForRole(AppRole.agent));
+        if (context.canPop()) {
+          context.pop();
+        } else {
+          context.go(AppRoutes.signInForRole(AppRole.agent));
+        }
     }
   }
 
@@ -159,51 +155,69 @@ class _PasswordRecoveryScreenState
       return const Scaffold(body: SizedBox.shrink());
     }
     final initialPhone = _phone.isNotEmpty ? _phone : widget.args!.phone;
+
     return Scaffold(
-      backgroundColor: AppColors.canvasAuth,
-      appBar: AppBar(
-        backgroundColor: AppColors.canvasAuth,
-        leading: IconButton(
-          tooltip: 'Back',
-          onPressed: _busy ? null : _back,
-          icon: const Icon(Icons.arrow_back_rounded),
-        ),
-      ),
-      body: SafeArea(
-        top: false,
-        child: AnimatedSwitcher(
-          duration: AppMotion.base,
-          child: switch (_step) {
-            _RecoveryStep.phone => RecoveryPhoneStep(
-              initialPhone: initialPhone,
-              submitting: _busy,
-              error: _error,
-              onSubmit: _requestCode,
+      backgroundColor: AppColors.white,
+      resizeToAvoidBottomInset: false,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: IgnorePointer(
+              child: Image.asset(
+                'assets/images/login_screen_background_button.webp',
+                fit: BoxFit.fitWidth,
+                alignment: Alignment.bottomCenter,
+              ),
             ),
-            _RecoveryStep.otp => ActivationOtpStep(
-              phone: _phone,
-              sending: _busy,
-              sent: true,
-              expiresIn: '5 minutes',
-              error: _error,
-              onContinue: _verifyCode,
-              onResend: _resendCode,
+          ),
+          SafeArea(
+            child: Column(
+              children: [
+                RecoveryTopBar(onBack: _busy ? null : _back),
+                Expanded(
+                  child: AnimatedSwitcher(
+                    duration: AppMotion.base,
+                    child: switch (_step) {
+                      _RecoveryStep.phone => RecoveryPhoneStep(
+                        initialPhone: initialPhone,
+                        submitting: _busy,
+                        error: _error,
+                        onSubmit: _requestCode,
+                      ),
+                      _RecoveryStep.otp => ActivationOtpStep(
+                        phone: _phone,
+                        sending: _busy,
+                        sent: true,
+                        expiresIn: '5 minutes',
+                        error: _error,
+                        onContinue: _verifyCode,
+                        onResend: _resendCode,
+                        deliveryLabel: 'Check messages for a code at',
+                      ),
+                      _RecoveryStep.password => ActivationPasswordStep(
+                        submitting: _busy,
+                        error: _error,
+                        title: 'Choose a new password',
+                        description:
+                            'Your old password will stop working on every device.',
+                        actionLabel: 'Save password and sign in',
+                        onSubmit: _savePassword,
+                      ),
+                      _RecoveryStep.completed => RecoveryCompletionStep(
+                        onSignIn: () =>
+                            context.go(AppRoutes.signInForRole(AppRole.agent)),
+                      ),
+                    },
+                  ),
+                ),
+              ],
             ),
-            _RecoveryStep.password => ActivationPasswordStep(
-              submitting: _busy,
-              error: _error,
-              title: 'Choose a new password',
-              description:
-                  'Your old password will stop working on every device.',
-              actionLabel: 'Save password and sign in',
-              onSubmit: _savePassword,
-            ),
-            _RecoveryStep.completed => RecoveryCompletionStep(
-              onSignIn: () =>
-                  context.go(AppRoutes.signInForRole(AppRole.agent)),
-            ),
-          },
-        ),
+          ),
+        ],
       ),
     );
   }

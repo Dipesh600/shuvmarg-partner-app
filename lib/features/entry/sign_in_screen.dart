@@ -401,7 +401,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                     child: GestureDetector(
                       onTap: () {
                         if (role == AppRole.agent) {
-                          context.go(
+                          context.push(
                             AppRoutes.recoverPassword,
                             extra: PasswordRecoveryArgs(
                               role: role,

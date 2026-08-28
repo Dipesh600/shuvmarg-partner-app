@@ -72,11 +72,19 @@ void main() {
 
     expect(find.text('Reset your password'), findsOneWidget);
     expect(find.text('New password'), findsNothing);
-    await tester.tap(find.text('Send verification code'));
+    expect(find.textContaining('For your privacy'), findsNothing);
+    expect(find.text('Continue'), findsOneWidget);
+    await tester.tap(find.text('Continue'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 250));
     expect(gateway.calls, ['request:9800000000']);
     expect(find.text('Enter the 6-digit code'), findsOneWidget);
+    expect(
+      find.text('Check messages for a code at +977 98••••••00'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('OTP has been sent'), findsNothing);
+    expect(find.textContaining('Sent by SMS'), findsNothing);
     expect(find.text('New password'), findsNothing);
 
     await tester.enterText(find.byType(Pinput), '123456');

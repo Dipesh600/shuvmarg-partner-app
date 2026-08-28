@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/design/design.dart';
-import '../../../shared/ui/ui.dart';
+import 'activation_password_field.dart';
 
 class ActivationPasswordStep extends StatefulWidget {
   const ActivationPasswordStep({
@@ -29,6 +29,8 @@ class _ActivationPasswordStepState extends State<ActivationPasswordStep> {
   final _password = TextEditingController();
   final _confirmation = TextEditingController();
   String? _localError;
+  bool _obscurePass = true;
+  bool _obscureConfirm = true;
 
   @override
   void dispose() {
@@ -62,127 +64,173 @@ class _ActivationPasswordStepState extends State<ActivationPasswordStep> {
 
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     final error = _localError ?? widget.error;
+
     return ListView(
       key: const ValueKey('activation-password-content'),
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.xl,
-        AppSpacing.md,
-        AppSpacing.xl,
-        AppSpacing.xxl,
+      physics: const BouncingScrollPhysics(),
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.gutter,
+        AppSpacing.sm,
+        AppSpacing.gutter,
+        bottomInset > 0 ? bottomInset + AppSpacing.md : AppSpacing.xxl,
       ),
       children: [
-        const _PasswordStepMark(),
-        const SizedBox(height: AppSpacing.xl),
-        Text(widget.title, style: AppText.display2),
-        const SizedBox(height: AppSpacing.xs),
-        Text(widget.description, style: AppText.bodySm),
-        const SizedBox(height: AppSpacing.xl),
-        AppCard(
+        const Text(
+          'NEW CREDENTIALS',
+          style: TextStyle(
+            fontFamily: 'Manrope',
+            fontSize: 11.5,
+            fontWeight: FontWeight.w800,
+            color: AppColors.primary,
+            letterSpacing: 1.2,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          widget.title,
+          style: const TextStyle(
+            fontFamily: 'Neue Machina',
+            fontSize: 32,
+            fontWeight: FontWeight.w400,
+            color: AppColors.textPrimary,
+            letterSpacing: -0.4,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          widget.description,
+          style: const TextStyle(
+            fontFamily: 'Manrope',
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: AppColors.textTertiary,
+            height: 1.4,
+          ),
+        ),
+        const SizedBox(height: 28),
+        const Text(
+          'New password',
+          style: TextStyle(
+            fontFamily: 'Manrope',
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        ActivationPasswordField(
+          controller: _password,
+          hint: 'Enter a secure password',
+          obscure: _obscurePass,
+          enabled: !widget.submitting,
+          autofocus: true,
+          onToggleObscure: () => setState(() => _obscurePass = !_obscurePass),
+          onChanged: (_) => setState(() => _localError = null),
+        ),
+        const SizedBox(height: 16),
+        const Text(
+          'Confirm password',
+          style: TextStyle(
+            fontFamily: 'Manrope',
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        ActivationPasswordField(
+          controller: _confirmation,
+          hint: 'Enter it again',
+          obscure: _obscureConfirm,
+          enabled: !widget.submitting,
+          onToggleObscure: () => setState(() => _obscureConfirm = !_obscureConfirm),
+          onChanged: (_) => setState(() => _localError = null),
+          onSubmitted: _submit,
+        ),
+        const SizedBox(height: 18),
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8F9FA),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFE9ECEF)),
+          ),
           child: Column(
             children: [
-              AppTextField(
-                label: 'New password',
-                hint: 'Enter a secure password',
-                controller: _password,
-                obscureText: true,
-                enabled: !widget.submitting,
-                autofocus: true,
-                onChanged: (_) => setState(() => _localError = null),
+              ActivationPasswordRule(label: '8 or more characters', met: _hasLength),
+              const SizedBox(height: 8),
+              ActivationPasswordRule(label: 'One uppercase letter', met: _hasUppercase),
+              const SizedBox(height: 8),
+              ActivationPasswordRule(label: 'One number', met: _hasNumber),
+            ],
+          ),
+        ),
+        if (error != null) ...[
+          const SizedBox(height: 14),
+          Text(
+            error,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontFamily: 'Manrope',
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+              color: AppColors.danger,
+            ),
+          ),
+        ],
+        const SizedBox(height: 24),
+        SizedBox(
+          width: double.infinity,
+          height: 54,
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [AppColors.orange400, AppColors.primary],
               ),
-              const SizedBox(height: AppSpacing.md),
-              AppTextField(
-                label: 'Confirm password',
-                hint: 'Enter it again',
-                controller: _confirmation,
-                obscureText: true,
-                enabled: !widget.submitting,
-                onSubmitted: (_) => _submit(),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              AppInsetPanel(
-                child: Column(
-                  children: [
-                    _PasswordRule(
-                      label: '8 or more characters',
-                      met: _hasLength,
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    _PasswordRule(
-                      label: 'One uppercase letter',
-                      met: _hasUppercase,
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    _PasswordRule(label: 'One number', met: _hasNumber),
-                  ],
-                ),
-              ),
-              if (error != null) ...[
-                const SizedBox(height: AppSpacing.md),
-                Text(
-                  error,
-                  textAlign: TextAlign.center,
-                  style: AppText.bodySm.copyWith(color: AppColors.danger),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.30),
+                  blurRadius: 18,
+                  offset: const Offset(0, 6),
                 ),
               ],
-              const SizedBox(height: AppSpacing.xl),
-              AppButton(
-                label: widget.actionLabel,
-                isLoading: widget.submitting,
-                onPressed: widget.submitting ? null : _submit,
+            ),
+            child: ElevatedButton(
+              onPressed: widget.submitting ? null : _submit,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
               ),
-            ],
+              child: widget.submitting
+                  ? const SizedBox(
+                      height: 22,
+                      width: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        valueColor: AlwaysStoppedAnimation<Color>(AppColors.white),
+                      ),
+                    )
+                  : Text(
+                      widget.actionLabel,
+                      style: const TextStyle(
+                        fontFamily: 'Manrope',
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.white,
+                      ),
+                    ),
+            ),
           ),
         ),
       ],
     );
   }
-}
-
-class _PasswordStepMark extends StatelessWidget {
-  const _PasswordStepMark();
-
-  @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      Container(
-        width: 40,
-        height: 40,
-        decoration: const BoxDecoration(
-          color: AppColors.primarySurface,
-          shape: BoxShape.circle,
-        ),
-        child: const Icon(
-          Icons.password_rounded,
-          color: AppColors.primary,
-          size: 20,
-        ),
-      ),
-      const SizedBox(width: AppSpacing.sm),
-      Text(
-        'Step 2 of 2',
-        style: AppText.label.copyWith(color: AppColors.primary),
-      ),
-    ],
-  );
-}
-
-class _PasswordRule extends StatelessWidget {
-  const _PasswordRule({required this.label, required this.met});
-
-  final String label;
-  final bool met;
-
-  @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      Icon(
-        met ? Icons.check_circle_rounded : Icons.circle_outlined,
-        size: 17,
-        color: met ? AppColors.success : AppColors.textMuted,
-      ),
-      const SizedBox(width: AppSpacing.xs),
-      Expanded(child: Text(label, style: AppText.bodySm)),
-    ],
-  );
 }

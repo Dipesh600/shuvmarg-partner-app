@@ -3,8 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:pinput/pinput.dart';
 
 import '../../../core/design/design.dart';
-import '../../../shared/ui/ui.dart';
 import 'activation_resend_button.dart';
+import 'activation_send_problem.dart';
 
 class ActivationOtpStep extends StatefulWidget {
   const ActivationOtpStep({
@@ -16,6 +16,7 @@ class ActivationOtpStep extends StatefulWidget {
     required this.error,
     required this.onContinue,
     required this.onResend,
+    this.deliveryLabel = 'Sent by SMS to',
   });
 
   final String phone;
@@ -25,6 +26,7 @@ class ActivationOtpStep extends StatefulWidget {
   final String? error;
   final ValueChanged<String> onContinue;
   final Future<void> Function() onResend;
+  final String deliveryLabel;
 
   @override
   State<ActivationOtpStep> createState() => _ActivationOtpStepState();
@@ -48,11 +50,16 @@ class _ActivationOtpStepState extends State<ActivationOtpStep> {
   PinTheme _pinTheme(double width) => PinTheme(
     width: width,
     height: 56,
-    textStyle: AppText.titleLg,
+    textStyle: const TextStyle(
+      fontFamily: 'Manrope',
+      fontSize: 20,
+      fontWeight: FontWeight.w700,
+      color: AppColors.textPrimary,
+    ),
     decoration: BoxDecoration(
-      color: AppColors.surface,
-      border: Border.all(color: AppColors.borderInput, width: 1.5),
-      borderRadius: AppRadius.inputRadius,
+      color: AppColors.white,
+      border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
+      borderRadius: BorderRadius.circular(14),
     ),
   );
 
@@ -62,149 +69,180 @@ class _ActivationOtpStepState extends State<ActivationOtpStep> {
   }
 
   @override
-  Widget build(BuildContext context) => ListView(
-    key: const ValueKey('activation-otp-content'),
-    padding: const EdgeInsets.fromLTRB(
-      AppSpacing.xl,
-      AppSpacing.md,
-      AppSpacing.xl,
-      AppSpacing.xxl,
-    ),
-    children: [
-      const _StepMark(icon: Icons.sms_outlined, label: 'Step 1 of 2'),
-      const SizedBox(height: AppSpacing.xl),
-      Text('Enter the 6-digit code', style: AppText.display2),
-      const SizedBox(height: AppSpacing.xs),
-      Text('Sent by SMS to $_maskedPhone', style: AppText.bodySm),
-      const SizedBox(height: AppSpacing.xl),
-      if (widget.sending)
-        const AppCard(child: Center(child: CircularProgressIndicator()))
-      else if (!widget.sent)
-        _SendProblem(message: widget.error, onRetry: widget.onResend)
-      else
-        AppCard(
-          child: Column(
-            children: [
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final width = ((constraints.maxWidth - 40) / 6).clamp(
-                    30.0,
-                    48.0,
-                  );
-                  final theme = _pinTheme(width);
-                  return Pinput(
-                    length: 6,
-                    controller: _code,
-                    autofocus: true,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    separatorBuilder: (_) =>
-                        const SizedBox(width: AppSpacing.xs),
-                    defaultPinTheme: theme,
-                    focusedPinTheme: theme.copyWith(
-                      decoration: theme.decoration?.copyWith(
-                        border: Border.all(
-                          color: AppColors.primary,
-                          width: 1.5,
-                        ),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: AppColors.focusRing,
-                            spreadRadius: 3,
-                          ),
-                        ],
-                      ),
-                    ),
-                    errorPinTheme: theme.copyWith(
-                      decoration: theme.decoration?.copyWith(
-                        border: Border.all(color: AppColors.danger, width: 1.5),
-                      ),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Text(
-                'Code expires in ${widget.expiresIn ?? '5 minutes'}.',
-                style: AppText.caption,
-              ),
-              if (widget.error != null) ...[
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  widget.error!,
-                  textAlign: TextAlign.center,
-                  style: AppText.bodySm.copyWith(color: AppColors.danger),
-                ),
-              ],
-              const SizedBox(height: AppSpacing.lg),
-              AppButton(
-                label: 'Continue securely',
-                onPressed: () => widget.onContinue(_code.text),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              ActivationResendButton(onResend: _resend),
-            ],
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
+    return ListView(
+      key: const ValueKey('activation-otp-content'),
+      physics: const BouncingScrollPhysics(),
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.gutter,
+        AppSpacing.sm,
+        AppSpacing.gutter,
+        bottomInset > 0 ? bottomInset + AppSpacing.md : AppSpacing.xxl,
+      ),
+      children: [
+        const Text(
+          'SECURITY VERIFICATION',
+          style: TextStyle(
+            fontFamily: 'Manrope',
+            fontSize: 11.5,
+            fontWeight: FontWeight.w800,
+            color: AppColors.primary,
+            letterSpacing: 1.2,
           ),
         ),
-      const SizedBox(height: AppSpacing.lg),
-      Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.lock_outline_rounded, size: 16),
-          const SizedBox(width: AppSpacing.xs),
-          Flexible(
+        const SizedBox(height: 6),
+        const Text(
+          'Enter the 6-digit code',
+          style: TextStyle(
+            fontFamily: 'Neue Machina',
+            fontSize: 32,
+            fontWeight: FontWeight.w400,
+            color: AppColors.textPrimary,
+            letterSpacing: -0.4,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          '${widget.deliveryLabel} $_maskedPhone',
+          style: const TextStyle(
+            fontFamily: 'Manrope',
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: AppColors.textTertiary,
+            height: 1.4,
+          ),
+        ),
+        const SizedBox(height: 28),
+        if (widget.sending)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 40),
+            child: Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            ),
+          )
+        else if (!widget.sent)
+          ActivationSendProblem(message: widget.error, onRetry: widget.onResend)
+        else ...[
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final width = ((constraints.maxWidth - 40) / 6).clamp(34.0, 50.0);
+              final theme = _pinTheme(width);
+              return Pinput(
+                length: 6,
+                controller: _code,
+                autofocus: true,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                separatorBuilder: (_) => const SizedBox(width: 8),
+                defaultPinTheme: theme,
+                focusedPinTheme: theme.copyWith(
+                  decoration: theme.decoration?.copyWith(
+                    border: Border.all(color: AppColors.primary, width: 1.6),
+                  ),
+                ),
+                errorPinTheme: theme.copyWith(
+                  decoration: theme.decoration?.copyWith(
+                    border: Border.all(color: AppColors.danger, width: 1.6),
+                  ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+          Center(
             child: Text(
-              'Never share this code.',
-              textAlign: TextAlign.center,
-              style: AppText.caption,
+              'Code expires in ${widget.expiresIn ?? '5 minutes'}.',
+              style: const TextStyle(
+                fontFamily: 'Manrope',
+                fontSize: 12.5,
+                fontWeight: FontWeight.w500,
+                color: AppColors.textTertiary,
+              ),
             ),
           ),
+          if (widget.error != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              widget.error!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontFamily: 'Manrope',
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: AppColors.danger,
+              ),
+            ),
+          ],
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            height: 54,
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [AppColors.orange400, AppColors.primary],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.30),
+                    blurRadius: 18,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: ElevatedButton(
+                onPressed: () => widget.onContinue(_code.text),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                child: const Text(
+                  'Continue securely',
+                  style: TextStyle(
+                    fontFamily: 'Manrope',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.white,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          ActivationResendButton(onResend: _resend),
         ],
-      ),
-    ],
-  );
-}
-
-class _StepMark extends StatelessWidget {
-  const _StepMark({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      Container(
-        width: 40,
-        height: 40,
-        decoration: const BoxDecoration(
-          color: AppColors.primarySurface,
-          shape: BoxShape.circle,
+        const SizedBox(height: 24),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: const [
+            Icon(
+              Icons.lock_outline_rounded,
+              size: 15,
+              color: Color(0xFF94A3B8),
+            ),
+            SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                'Never share this code.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'Manrope',
+                  fontSize: 12,
+                  color: Color(0xFF94A3B8),
+                ),
+              ),
+            ),
+          ],
         ),
-        child: Icon(icon, color: AppColors.primary, size: 20),
-      ),
-      const SizedBox(width: AppSpacing.sm),
-      Text(label, style: AppText.label.copyWith(color: AppColors.primary)),
-    ],
-  );
-}
-
-class _SendProblem extends StatelessWidget {
-  const _SendProblem({required this.message, required this.onRetry});
-
-  final String? message;
-  final Future<void> Function() onRetry;
-
-  @override
-  Widget build(BuildContext context) => AppCard(
-    child: Column(
-      children: [
-        const Icon(Icons.sms_failed_outlined, color: AppColors.danger),
-        const SizedBox(height: AppSpacing.sm),
-        Text(message ?? 'We could not send the code.', style: AppText.bodySm),
-        const SizedBox(height: AppSpacing.md),
-        AppButton.secondary(label: 'Try again', onPressed: onRetry),
       ],
-    ),
-  );
+    );
+  }
 }

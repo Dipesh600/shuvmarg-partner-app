@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../../core/design/design.dart';
-import '../../../shared/ui/ui.dart';
+import '../../../domain/app_role.dart';
+import '../widgets/role_support_sheet.dart';
+import 'recovery_phone_input.dart';
 
+/// First step in password recovery: Verify registered mobile number.
 class RecoveryPhoneStep extends StatefulWidget {
   const RecoveryPhoneStep({
     super.key,
@@ -49,82 +51,161 @@ class _RecoveryPhoneStepState extends State<RecoveryPhoneStep> {
   }
 
   @override
-  Widget build(BuildContext context) => ListView(
-    key: const ValueKey('recovery-phone-content'),
-    padding: const EdgeInsets.fromLTRB(
-      AppSpacing.xl,
-      AppSpacing.md,
-      AppSpacing.xl,
-      AppSpacing.xxl,
-    ),
-    children: [
-      Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: const BoxDecoration(
-              color: AppColors.primarySurface,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.phone_android_rounded,
-              color: AppColors.primary,
-              size: 20,
-            ),
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final activeError = _localError ?? widget.error;
+
+    return ListView(
+      key: const ValueKey('recovery-phone-content'),
+      physics: const BouncingScrollPhysics(),
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.gutter,
+        AppSpacing.sm,
+        AppSpacing.gutter,
+        bottomInset > 0 ? bottomInset + AppSpacing.md : AppSpacing.xxl,
+      ),
+      children: [
+        const Text(
+          'ACCOUNT RECOVERY',
+          style: TextStyle(
+            fontFamily: 'Manrope',
+            fontSize: 11.5,
+            fontWeight: FontWeight.w800,
+            color: AppColors.primary,
+            letterSpacing: 1.2,
           ),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Text(
-              'Recover agent account',
-              style: AppText.label.copyWith(color: AppColors.primary),
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'Reset your password',
+          style: TextStyle(
+            fontFamily: 'Neue Machina',
+            fontSize: 32,
+            fontWeight: FontWeight.w400,
+            color: AppColors.textPrimary,
+            letterSpacing: -0.4,
+          ),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'We will text a verification code to the phone on your agent account.',
+          style: TextStyle(
+            fontFamily: 'Manrope',
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: AppColors.textTertiary,
+            height: 1.4,
+          ),
+        ),
+        const SizedBox(height: 28),
+        const Text(
+          'Mobile number',
+          style: TextStyle(
+            fontFamily: 'Manrope',
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        RecoveryPhoneInput(
+          controller: _phone,
+          enabled: !widget.submitting,
+          hasError: activeError != null,
+          onChanged: (_) => setState(() => _localError = null),
+          onSubmitted: _submit,
+        ),
+        if (activeError != null) ...[
+          const SizedBox(height: AppSpacing.sm),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppColors.dangerSurface,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: AppColors.danger.withValues(alpha: 0.4),
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.error_outline_rounded,
+                  size: 18,
+                  color: AppColors.danger,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    activeError,
+                    style: const TextStyle(
+                      fontFamily: 'Manrope',
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.danger,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
-      ),
-      const SizedBox(height: AppSpacing.xl),
-      Text('Reset your password', style: AppText.display2),
-      const SizedBox(height: AppSpacing.xs),
-      Text(
-        'We will text a verification code to the phone on your agent account.',
-        style: AppText.bodySm,
-      ),
-      const SizedBox(height: AppSpacing.xl),
-      AppCard(
-        child: Column(
-          children: [
-            AppTextField(
-              label: 'Mobile number',
-              hint: '98XXXXXXXX',
-              controller: _phone,
-              prefixIcon: Icons.phone_outlined,
-              keyboardType: TextInputType.phone,
-              textInputAction: TextInputAction.done,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(10),
+        const SizedBox(height: 28),
+        SizedBox(
+          width: double.infinity,
+          height: 54,
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [AppColors.orange400, AppColors.primary],
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.30),
+                  blurRadius: 18,
+                  offset: const Offset(0, 6),
+                ),
               ],
-              errorText: _localError ?? widget.error,
-              enabled: !widget.submitting,
-              autofocus: true,
-              onChanged: (_) => setState(() => _localError = null),
-              onSubmitted: (_) => _submit(),
             ),
-            const SizedBox(height: AppSpacing.xl),
-            AppButton(
-              label: 'Send verification code',
-              isLoading: widget.submitting,
+            child: ElevatedButton(
               onPressed: widget.submitting ? null : _submit,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              child: widget.submitting
+                  ? const SizedBox(
+                      height: 22,
+                      width: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          AppColors.white,
+                        ),
+                      ),
+                    )
+                  : const Text(
+                      'Continue',
+                      style: TextStyle(
+                        fontFamily: 'Manrope',
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.white,
+                      ),
+                    ),
             ),
-          ],
+          ),
         ),
-      ),
-      const SizedBox(height: AppSpacing.md),
-      Text(
-        'For your privacy, we show the same response even if no matching account exists.',
-        textAlign: TextAlign.center,
-        style: AppText.caption,
-      ),
-    ],
-  );
+        const SizedBox(height: 24),
+        RecoveryHelpPill(
+          onTap: () => RoleSupportSheet.show(context, role: AppRole.agent),
+        ),
+      ],
+    );
+  }
 }
