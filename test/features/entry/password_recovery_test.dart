@@ -9,6 +9,7 @@ import 'package:shuvmarg_partner_app/domain/app_role.dart';
 import 'package:shuvmarg_partner_app/features/entry/password_recovery/password_recovery_repository.dart';
 import 'package:shuvmarg_partner_app/features/entry/password_recovery/password_recovery_route.dart';
 import 'package:shuvmarg_partner_app/features/entry/password_recovery/password_recovery_screen.dart';
+import 'package:shuvmarg_partner_app/features/entry/password_recovery/recovery_completion_step.dart';
 
 class _RecoveryGateway implements PasswordRecoveryGateway {
   final calls = <String>[];
@@ -93,5 +94,23 @@ void main() {
     ).readAsStringSync();
     expect(route, isNot(contains('otp')));
     expect(route, isNot(contains('password')));
+  });
+
+  testWidgets('missing automatic session offers a direct sign-in handoff', (
+    tester,
+  ) async {
+    var pressed = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: RecoveryCompletionStep(onSignIn: () => pressed = true),
+        ),
+      ),
+    );
+
+    expect(find.text('Your password was saved'), findsOneWidget);
+    expect(find.text('Enter the 6-digit code'), findsNothing);
+    await tester.tap(find.text('Sign in with new password'));
+    expect(pressed, isTrue);
   });
 }

@@ -177,10 +177,26 @@ class SessionController extends Notifier<SessionState> {
           authenticated: false,
           appSource: AppRole.agent,
         );
-    return switch (result) {
-      Err(:final failure) => Result.err(failure),
-      Ok(:final value) => _persistAuthenticatedResponse(value, AppRole.agent),
-    };
+    switch (result) {
+      case Err(:final failure):
+        return Result.err(failure);
+      case Ok(:final value):
+        final session = await _persistAuthenticatedResponse(
+          value,
+          AppRole.agent,
+        );
+        if (session case Err(:final failure)) {
+          return Result.err(
+            ServerFailure(
+              message:
+                  'Your password was accepted, but automatic sign-in did not finish.',
+              data: const {'passwordUpdated': true},
+              cause: failure,
+            ),
+          );
+        }
+        return session;
+    }
   }
 
   Future<Result<AppRole>> _persistAuthenticatedResponse(

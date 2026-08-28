@@ -11,9 +11,10 @@ import '../activation/activation_otp_step.dart';
 import '../activation/activation_password_step.dart';
 import 'password_recovery_repository.dart';
 import 'password_recovery_route.dart';
+import 'recovery_completion_step.dart';
 import 'recovery_phone_step.dart';
 
-enum _RecoveryStep { phone, otp, password }
+enum _RecoveryStep { phone, otp, password, completed }
 
 class PasswordRecoveryScreen extends ConsumerStatefulWidget {
   const PasswordRecoveryScreen({super.key, required this.args});
@@ -112,6 +113,15 @@ class _PasswordRecoveryScreenState
         .recoverAgentPassword(phone: _phone, otp: otp, newPassword: password);
     if (!mounted) return;
     if (result case Err(:final failure)) {
+      if (failure.data['passwordUpdated'] == true) {
+        setState(() {
+          _busy = false;
+          _error = null;
+          _step = _RecoveryStep.completed;
+          _otp = null;
+        });
+        return;
+      }
       setState(() {
         _busy = false;
         _error = failure.message;
@@ -128,6 +138,8 @@ class _PasswordRecoveryScreenState
           _step = _RecoveryStep.otp;
           _error = null;
         });
+      case _RecoveryStep.completed:
+        context.go(AppRoutes.signInForRole(AppRole.agent));
       case _RecoveryStep.otp:
         setState(() {
           _step = _RecoveryStep.phone;
@@ -185,6 +197,10 @@ class _PasswordRecoveryScreenState
                   'Your old password will stop working on every device.',
               actionLabel: 'Save password and sign in',
               onSubmit: _savePassword,
+            ),
+            _RecoveryStep.completed => RecoveryCompletionStep(
+              onSignIn: () =>
+                  context.go(AppRoutes.signInForRole(AppRole.agent)),
             ),
           },
         ),
