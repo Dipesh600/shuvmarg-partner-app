@@ -123,8 +123,8 @@ enum BackendErrorCode {
   // Groupings the UI branches on
   // ───────────────────────────────────────────────────────────────────────────
 
-  /// The account is blocked in a way the user cannot self-resolve. Screens show
-  /// a support-contact card, never a retry button.
+  /// The account's standing blocks normal sign-in. Most require support;
+  /// [accountNotActivated] is the deliberate self-service exception.
   bool get isAccountBlocked => const {
     accountDeleted,
     accountBanned,
@@ -132,6 +132,7 @@ enum BackendErrorCode {
     accountInactive,
     accountDeactivated,
     accountRestricted,
+    accountNotActivated,
   }.contains(this);
 
   /// Re-authentication is the only recovery — clear the session and go to login.
