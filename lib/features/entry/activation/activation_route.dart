@@ -1,8 +1,8 @@
 import '../../../domain/app_role.dart';
 
 class ActivationArgs {
-  const ActivationArgs({required this.phone, required this.role});
+  const ActivationArgs({required this.role, this.phone});
 
-  final String phone;
+  final String? phone;
   final AppRole role;
 }

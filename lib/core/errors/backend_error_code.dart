@@ -77,6 +77,13 @@ enum BackendErrorCode {
   missingPhone('MISSING_PHONE'),
   missingVerifyInput('MISSING_VERIFY_INPUT'),
   smsDeliveryFailed('SMS_DELIVERY_FAILED'),
+  activationRoleRequired('ACTIVATION_ROLE_REQUIRED'),
+  invitationNotFound('INVITATION_NOT_FOUND'),
+  accountAlreadyActive('ACCOUNT_ALREADY_ACTIVE'),
+  activationNotAvailable('ACTIVATION_NOT_AVAILABLE'),
+  driverAccountNotFound('DRIVER_ACCOUNT_NOT_FOUND'),
+  driverAccountInvited('DRIVER_ACCOUNT_INVITED'),
+  driverAccountUnavailable('DRIVER_ACCOUNT_UNAVAILABLE'),
 
   // ── Agent KYC application ────────────────────────────────────────────────
   /// Authenticated as an agent, but no application row exists yet → start KYC.
@@ -133,6 +140,8 @@ enum BackendErrorCode {
     accountDeactivated,
     accountRestricted,
     accountNotActivated,
+    driverAccountInvited,
+    driverAccountUnavailable,
   }.contains(this);
 
   /// Re-authentication is the only recovery — clear the session and go to login.

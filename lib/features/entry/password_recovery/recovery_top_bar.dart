@@ -6,8 +6,9 @@ import '../widgets/role_support_sheet.dart';
 
 /// Top action bar for password recovery screens with back button and support trigger.
 class RecoveryTopBar extends StatelessWidget {
-  const RecoveryTopBar({super.key, required this.onBack});
+  const RecoveryTopBar({super.key, required this.role, required this.onBack});
 
+  final AppRole role;
   final VoidCallback? onBack;
 
   @override
@@ -48,7 +49,7 @@ class RecoveryTopBar extends StatelessWidget {
           ),
           const Spacer(),
           GestureDetector(
-            onTap: () => RoleSupportSheet.show(context, role: AppRole.agent),
+            onTap: () => RoleSupportSheet.show(context, role: role),
             behavior: HitTestBehavior.opaque,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),

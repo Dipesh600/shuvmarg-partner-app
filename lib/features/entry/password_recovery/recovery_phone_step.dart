@@ -9,12 +9,14 @@ import 'recovery_phone_input.dart';
 class RecoveryPhoneStep extends StatefulWidget {
   const RecoveryPhoneStep({
     super.key,
+    required this.role,
     required this.initialPhone,
     required this.submitting,
     required this.error,
     required this.onSubmit,
   });
 
+  final AppRole role;
   final String initialPhone;
   final bool submitting;
   final String? error;
@@ -87,9 +89,9 @@ class _RecoveryPhoneStepState extends State<RecoveryPhoneStep> {
           ),
         ),
         const SizedBox(height: 8),
-        const Text(
-          'We will text a verification code to the phone on your agent account.',
-          style: TextStyle(
+        Text(
+          'We will text a verification code to the phone on your ${widget.role.label.toLowerCase()} account.',
+          style: const TextStyle(
             fontFamily: 'Manrope',
             fontSize: 14,
             fontWeight: FontWeight.w500,
@@ -203,7 +205,7 @@ class _RecoveryPhoneStepState extends State<RecoveryPhoneStep> {
         ),
         const SizedBox(height: 24),
         RecoveryHelpPill(
-          onTap: () => RoleSupportSheet.show(context, role: AppRole.agent),
+          onTap: () => RoleSupportSheet.show(context, role: widget.role),
         ),
       ],
     );

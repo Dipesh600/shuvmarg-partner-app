@@ -6,6 +6,7 @@ void main() {
   test('captures every refresh-cookie name used by the backend portals', () {
     for (final name in [
       'agentRefreshToken',
+      'driverRefreshToken',
       'busOwnerRefreshToken',
       'passengerRefreshToken',
       'refreshToken',

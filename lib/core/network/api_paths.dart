@@ -10,8 +10,10 @@
 ///
 ///   /api                → routes/userRoutes/userRoutes.js
 ///   /api/auth/agent     → routes/authRoutes/agentAuthRoutes.js
+///   /api/auth/driver    → routes/authRoutes/driverAuthRoutes.js
 ///   /api/auth/activate  → routes/authRoutes/activateAuthRoutes.js
 ///   /api/agent          → routes/agentRoute/agentRoute.js
+///   /api/driver         → routes/driverRoutes/driverRoutes.js
 ///   /api/conductor      → routes/conductorRoutes/conductorRoutes.js
 ///   /api/ticket         → routes/ticketRoutes/ticketRoutes.js
 ///
@@ -111,6 +113,27 @@ abstract final class ApiPaths {
   /// `POST` — body `{phone}`.
   static const String agentResendOtpForReset =
       '/api/auth/agent/resendOtpForReset';
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Driver password recovery — driverAuthRoutes.js
+  // ───────────────────────────────────────────────────────────────────────────
+
+  static const String driverRequestPasswordReset =
+      '/api/auth/driver/requestPasswordReset';
+  static const String driverVerifyOtpForReset =
+      '/api/auth/driver/verifyOtpForReset';
+  static const String driverResetPassword = '/api/auth/driver/resetPassword';
+  static const String driverResendOtpForReset =
+      '/api/auth/driver/resendOtpForReset';
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Driver workspace — driverRoutes.js
+  // ───────────────────────────────────────────────────────────────────────────
+
+  /// `GET` — the signed-in Driver's operator-provided identity and compliance
+  /// summary. Document presence is returned as booleans; private storage keys
+  /// and admin-review internals never leave the backend.
+  static const String driverMe = '/api/driver/me';
 
   // ───────────────────────────────────────────────────────────────────────────
   // Agent workspace — agentRoute.js

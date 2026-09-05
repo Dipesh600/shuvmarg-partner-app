@@ -121,6 +121,11 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     RoleSupportSheet.show(context, role: role);
   }
 
+  void _startInvitedAccountSetup(AppRole role) {
+    setState(() => _errorText = null);
+    context.go(AppRoutes.activateAccount, extra: ActivationArgs(role: role));
+  }
+
   @override
   Widget build(BuildContext context) {
     final role = _role;
@@ -395,37 +400,56 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Forgot Password Link
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: GestureDetector(
-                      onTap: () {
-                        if (role == AppRole.agent) {
-                          context.push(
-                            AppRoutes.recoverPassword,
-                            extra: PasswordRecoveryArgs(
-                              role: role,
-                              phone: _phoneController.text.trim(),
+                  // Password recovery and invited-account activation
+                  Row(
+                    children: [
+                      if (role != AppRole.agent)
+                        GestureDetector(
+                          onTap: () => _startInvitedAccountSetup(role),
+                          behavior: HitTestBehavior.opaque,
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 4),
+                            child: Text(
+                              'Set up invited account',
+                              style: TextStyle(
+                                fontFamily: 'Manrope',
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primary,
+                              ),
                             ),
-                          );
-                        } else {
-                          _showHelpSheet(context, role);
-                        }
-                      },
-                      behavior: HitTestBehavior.opaque,
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 4),
-                        child: Text(
-                          'Forgot password?',
-                          style: TextStyle(
-                            fontFamily: 'Manrope',
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.primary,
+                          ),
+                        ),
+                      const Spacer(),
+                      GestureDetector(
+                        onTap: () {
+                          if (role == AppRole.agent || role == AppRole.driver) {
+                            context.push(
+                              AppRoutes.recoverPassword,
+                              extra: PasswordRecoveryArgs(
+                                role: role,
+                                phone: _phoneController.text.trim(),
+                              ),
+                            );
+                          } else {
+                            _showHelpSheet(context, role);
+                          }
+                        },
+                        behavior: HitTestBehavior.opaque,
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 4),
+                          child: Text(
+                            'Forgot password?',
+                            style: TextStyle(
+                              fontFamily: 'Manrope',
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primary,
+                            ),
                           ),
                         ),
                       ),
-                    ),
+                    ],
                   ),
 
                   // Error Text Callout if present

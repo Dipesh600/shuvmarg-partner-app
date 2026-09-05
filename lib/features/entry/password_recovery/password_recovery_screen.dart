@@ -35,7 +35,10 @@ class _PasswordRecoveryScreenState
   String? _error;
   bool _busy = false;
 
-  bool get _validArgs => widget.args?.role == AppRole.agent;
+  bool get _validArgs =>
+      const {AppRole.agent, AppRole.driver}.contains(widget.args?.role);
+
+  AppRole get _role => widget.args!.role;
 
   Future<void> _requestCode(String phone) async {
     if (_busy) return;
@@ -46,7 +49,7 @@ class _PasswordRecoveryScreenState
     });
     final result = await ref
         .read(passwordRecoveryRepositoryProvider)
-        .requestCode(phone);
+        .requestCode(phone, _role);
     if (!mounted) return;
     switch (result) {
       case Ok():
@@ -73,7 +76,7 @@ class _PasswordRecoveryScreenState
     });
     final result = await ref
         .read(passwordRecoveryRepositoryProvider)
-        .verifyCode(_phone, otp);
+        .verifyCode(_phone, otp, _role);
     if (!mounted) return;
     switch (result) {
       case Ok():
@@ -93,7 +96,7 @@ class _PasswordRecoveryScreenState
   Future<void> _resendCode() async {
     final result = await ref
         .read(passwordRecoveryRepositoryProvider)
-        .resendCode(_phone);
+        .resendCode(_phone, _role);
     if (result case Err(:final failure)) {
       setState(() => _error = failure.message);
     } else {
@@ -110,7 +113,12 @@ class _PasswordRecoveryScreenState
     });
     final result = await ref
         .read(sessionControllerProvider.notifier)
-        .recoverAgentPassword(phone: _phone, otp: otp, newPassword: password);
+        .recoverPassword(
+          phone: _phone,
+          otp: otp,
+          newPassword: password,
+          role: _role,
+        );
     if (!mounted) return;
     if (result case Err(:final failure)) {
       final success = failure.data['passwordUpdated'] == true;
@@ -131,7 +139,7 @@ class _PasswordRecoveryScreenState
           _error = null;
         });
       case _RecoveryStep.completed:
-        context.go(AppRoutes.signInForRole(AppRole.agent));
+        context.go(AppRoutes.signInForRole(_role));
       case _RecoveryStep.otp:
         setState(() {
           _step = _RecoveryStep.phone;
@@ -141,7 +149,7 @@ class _PasswordRecoveryScreenState
         if (context.canPop()) {
           context.pop();
         } else {
-          context.go(AppRoutes.signInForRole(AppRole.agent));
+          context.go(AppRoutes.signInForRole(_role));
         }
     }
   }
@@ -177,12 +185,13 @@ class _PasswordRecoveryScreenState
           SafeArea(
             child: Column(
               children: [
-                RecoveryTopBar(onBack: _busy ? null : _back),
+                RecoveryTopBar(role: _role, onBack: _busy ? null : _back),
                 Expanded(
                   child: AnimatedSwitcher(
                     duration: AppMotion.base,
                     child: switch (_step) {
                       _RecoveryStep.phone => RecoveryPhoneStep(
+                        role: _role,
                         initialPhone: initialPhone,
                         submitting: _busy,
                         error: _error,
@@ -209,7 +218,7 @@ class _PasswordRecoveryScreenState
                       ),
                       _RecoveryStep.completed => RecoveryCompletionStep(
                         onSignIn: () =>
-                            context.go(AppRoutes.signInForRole(AppRole.agent)),
+                            context.go(AppRoutes.signInForRole(_role)),
                       ),
                     },
                   ),

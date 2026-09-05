@@ -164,27 +164,27 @@ class SessionController extends Notifier<SessionState> {
     }
   }
 
-  Future<Result<AppRole>> recoverAgentPassword({
+  Future<Result<AppRole>> recoverPassword({
     required String phone,
     required String otp,
     required String newPassword,
+    required AppRole role,
   }) async {
     final result = await ref
         .read(apiServiceProvider)
         .post(
-          ApiPaths.agentResetPassword,
+          role == AppRole.driver
+              ? ApiPaths.driverResetPassword
+              : ApiPaths.agentResetPassword,
           body: {'phone': phone, 'otp': otp, 'newPassword': newPassword},
           authenticated: false,
-          appSource: AppRole.agent,
+          appSource: role,
         );
     switch (result) {
       case Err(:final failure):
         return Result.err(failure);
       case Ok(:final value):
-        final session = await _persistAuthenticatedResponse(
-          value,
-          AppRole.agent,
-        );
+        final session = await _persistAuthenticatedResponse(value, role);
         if (session case Err(:final failure)) {
           return Result.err(
             ServerFailure(

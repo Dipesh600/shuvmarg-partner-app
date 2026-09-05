@@ -7,9 +7,9 @@ import '../../../domain/app_role.dart';
 import '../../../shared/session/session_providers.dart';
 
 abstract interface class PasswordRecoveryGateway {
-  Future<Result<void>> requestCode(String phone);
-  Future<Result<void>> verifyCode(String phone, String otp);
-  Future<Result<void>> resendCode(String phone);
+  Future<Result<void>> requestCode(String phone, AppRole role);
+  Future<Result<void>> verifyCode(String phone, String otp, AppRole role);
+  Future<Result<void>> resendCode(String phone, AppRole role);
 }
 
 final passwordRecoveryRepositoryProvider = Provider<PasswordRecoveryGateway>((
@@ -23,25 +23,45 @@ class PasswordRecoveryRepository implements PasswordRecoveryGateway {
 
   final ApiService _api;
 
-  Future<Result<void>> _post(String path, Map<String, String> body) async {
+  Future<Result<void>> _post(
+    String path,
+    Map<String, String> body,
+    AppRole role,
+  ) async {
     final result = await _api.post(
       path,
       body: body,
       authenticated: false,
-      appSource: AppRole.agent,
+      appSource: role,
     );
     return result.map((_) {});
   }
 
   @override
-  Future<Result<void>> requestCode(String phone) =>
-      _post(ApiPaths.agentRequestPasswordReset, {'phone': phone});
+  Future<Result<void>> requestCode(String phone, AppRole role) => _post(
+    role == AppRole.driver
+        ? ApiPaths.driverRequestPasswordReset
+        : ApiPaths.agentRequestPasswordReset,
+    {'phone': phone},
+    role,
+  );
 
   @override
-  Future<Result<void>> verifyCode(String phone, String otp) =>
-      _post(ApiPaths.agentVerifyOtpForReset, {'phone': phone, 'otp': otp});
+  Future<Result<void>> verifyCode(String phone, String otp, AppRole role) =>
+      _post(
+        role == AppRole.driver
+            ? ApiPaths.driverVerifyOtpForReset
+            : ApiPaths.agentVerifyOtpForReset,
+        {'phone': phone, 'otp': otp},
+        role,
+      );
 
   @override
-  Future<Result<void>> resendCode(String phone) =>
-      _post(ApiPaths.agentResendOtpForReset, {'phone': phone});
+  Future<Result<void>> resendCode(String phone, AppRole role) => _post(
+    role == AppRole.driver
+        ? ApiPaths.driverResendOtpForReset
+        : ApiPaths.agentResendOtpForReset,
+    {'phone': phone},
+    role,
+  );
 }
