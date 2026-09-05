@@ -15,11 +15,16 @@ class PersonaHomeScaffold extends StatelessWidget {
   const PersonaHomeScaffold({
     super.key,
     required this.user,
+    this.greetingName,
     required this.onSignOut,
     required this.body,
   });
 
   final AuthenticatedUser user;
+
+  /// Persona-specific display name. Driver profiles own their own name and may
+  /// intentionally differ from the shared login account used by other roles.
+  final String? greetingName;
 
   /// Invoked by the header's sign-out action. The screen wires this to the
   /// session controller; the scaffold stays presentational.
@@ -33,7 +38,7 @@ class PersonaHomeScaffold extends StatelessWidget {
     return BrandHeaderScaffold(
       header: BrandGreeting(
         salutation: 'Welcome back,',
-        name: user.shortName,
+        name: _shortName(greetingName ?? user.name),
         trailing: BrandHeaderAction(
           icon: Icons.logout_rounded,
           onTap: onSignOut,
@@ -54,6 +59,13 @@ class PersonaHomeScaffold extends StatelessWidget {
       ),
     );
   }
+}
+
+String _shortName(String value) {
+  final trimmed = value.trim();
+  if (trimmed.isEmpty) return 'there';
+  final space = trimmed.indexOf(' ');
+  return space == -1 ? trimmed : trimmed.substring(0, space);
 }
 
 /// Full-screen brand loader shown while a screen waits for the session — a

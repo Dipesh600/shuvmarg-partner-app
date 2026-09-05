@@ -6,6 +6,8 @@ import '../../shared/session/session_providers.dart';
 import '../../shared/session/session_state.dart';
 import '../../shared/ui/ui.dart';
 import '../shell/persona_home_scaffold.dart';
+import 'driver_profile_controller.dart';
+import 'driver_profile_section.dart';
 
 /// The driver workspace home.
 ///
@@ -25,19 +27,26 @@ class DriverHomeScreen extends ConsumerWidget {
     }
 
     final user = session.session.user;
+    final profileState = ref.watch(driverProfileControllerProvider);
+    // Do not flash the shared User name while the Driver profile loads. That
+    // account name may belong to the same person's passenger or agent persona.
+    final greetingName = profileState.dataOrNull?.fullName ?? 'Driver';
     return PersonaHomeScaffold(
       user: user,
+      greetingName: greetingName,
       onSignOut: () => ref.read(sessionControllerProvider.notifier).signOut(),
       body: [
         const AppSectionHeader(
           eyebrow: 'Driver workspace',
-          title: "You're signed in",
+          title: 'Your Driver profile',
+          subtitle: 'Details recorded by your bus operator.',
         ),
         const SizedBox(height: AppSpacing.md),
-        WorkspaceAccountCard(user: user, roleLabel: 'Driver'),
+        const DriverProfileSection(),
         const SizedBox(height: AppSpacing.md),
         const WorkspaceNoteCard(
-          message: 'Live location sharing is being set up for your account. '
+          message:
+              'Live location sharing is being set up for your account. '
               'It will appear here once your trips are connected.',
         ),
       ],

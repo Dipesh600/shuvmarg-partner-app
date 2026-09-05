@@ -108,6 +108,7 @@ class AuthHeaderInterceptor extends Interceptor {
   // because older deployments may still return it during a rolling release.
   static const _refreshCookieNames = <String>[
     'agentRefreshToken',
+    'driverRefreshToken',
     'busOwnerRefreshToken',
     'passengerRefreshToken',
     'refreshToken',

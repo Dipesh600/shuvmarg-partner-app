@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pinput/pinput.dart';
+import 'package:shuvmarg_partner_app/core/errors/backend_error_code.dart';
+import 'package:shuvmarg_partner_app/core/errors/failure.dart';
 import 'package:shuvmarg_partner_app/core/errors/result.dart';
 import 'package:shuvmarg_partner_app/domain/app_role.dart';
 import 'package:shuvmarg_partner_app/features/entry/password_recovery/password_recovery_repository.dart';
@@ -12,23 +14,30 @@ import 'package:shuvmarg_partner_app/features/entry/password_recovery/password_r
 import 'package:shuvmarg_partner_app/features/entry/password_recovery/recovery_completion_step.dart';
 
 class _RecoveryGateway implements PasswordRecoveryGateway {
+  _RecoveryGateway({this.requestResult = const Result.ok(null)});
+
+  final Result<void> requestResult;
   final calls = <String>[];
 
   @override
-  Future<Result<void>> requestCode(String phone) async {
-    calls.add('request:$phone');
+  Future<Result<void>> requestCode(String phone, AppRole role) async {
+    calls.add('request:${role.wire}:$phone');
+    return requestResult;
+  }
+
+  @override
+  Future<Result<void>> verifyCode(
+    String phone,
+    String otp,
+    AppRole role,
+  ) async {
+    calls.add('verify:${role.wire}:$phone:$otp');
     return const Result.ok(null);
   }
 
   @override
-  Future<Result<void>> verifyCode(String phone, String otp) async {
-    calls.add('verify:$phone:$otp');
-    return const Result.ok(null);
-  }
-
-  @override
-  Future<Result<void>> resendCode(String phone) async {
-    calls.add('resend:$phone');
+  Future<Result<void>> resendCode(String phone, AppRole role) async {
+    calls.add('resend:${role.wire}:$phone');
     return const Result.ok(null);
   }
 }
@@ -77,7 +86,7 @@ void main() {
     await tester.tap(find.text('Continue'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 250));
-    expect(gateway.calls, ['request:9800000000']);
+    expect(gateway.calls, ['request:agent:9800000000']);
     expect(find.text('Enter the 6-digit code'), findsOneWidget);
     expect(
       find.text('Check messages for a code at +977 98••••••00'),
@@ -91,9 +100,82 @@ void main() {
     await tester.tap(find.text('Continue securely'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 250));
-    expect(gateway.calls, ['request:9800000000', 'verify:9800000000:123456']);
+    expect(gateway.calls, [
+      'request:agent:9800000000',
+      'verify:agent:9800000000:123456',
+    ]);
     expect(find.text('Choose a new password'), findsOneWidget);
     expect(find.byType(Pinput), findsNothing);
+  });
+
+  testWidgets('driver recovery uses the driver account flow', (tester) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final gateway = _RecoveryGateway();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          passwordRecoveryRepositoryProvider.overrideWithValue(gateway),
+        ],
+        child: const MaterialApp(
+          home: PasswordRecoveryScreen(
+            args: PasswordRecoveryArgs(
+              role: AppRole.driver,
+              phone: '9800000000',
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.textContaining('phone on your driver account'), findsOneWidget);
+    await tester.tap(find.text('Continue'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(gateway.calls, ['request:driver:9800000000']);
+    expect(find.text('Enter the 6-digit code'), findsOneWidget);
+  });
+
+  testWidgets('non-driver phone stays on lookup and never shows OTP', (
+    tester,
+  ) async {
+    final gateway = _RecoveryGateway(
+      requestResult: const Result.err(
+        NotFoundFailure(
+          message: 'No Driver account was found for this phone number.',
+          code: BackendErrorCode.driverAccountNotFound,
+          statusCode: 404,
+        ),
+      ),
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          passwordRecoveryRepositoryProvider.overrideWithValue(gateway),
+        ],
+        child: const MaterialApp(
+          home: PasswordRecoveryScreen(
+            args: PasswordRecoveryArgs(
+              role: AppRole.driver,
+              phone: '9800000000',
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Continue'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+
+    expect(find.text('Reset your password'), findsOneWidget);
+    expect(find.text('Enter the 6-digit code'), findsNothing);
+    expect(
+      find.text('No Driver account was found for this phone number.'),
+      findsOneWidget,
+    );
   });
 
   test('route handoff contains no OTP or password', () {

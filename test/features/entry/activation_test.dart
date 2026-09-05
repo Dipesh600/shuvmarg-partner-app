@@ -4,21 +4,31 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pinput/pinput.dart';
+import 'package:shuvmarg_partner_app/core/errors/backend_error_code.dart';
+import 'package:shuvmarg_partner_app/core/errors/failure.dart';
 import 'package:shuvmarg_partner_app/core/errors/result.dart';
 import 'package:shuvmarg_partner_app/domain/app_role.dart';
 import 'package:shuvmarg_partner_app/features/entry/activation/activation_repository.dart';
 import 'package:shuvmarg_partner_app/features/entry/activation/activation_route.dart';
 import 'package:shuvmarg_partner_app/features/entry/activation/activation_screen.dart';
+import 'package:shuvmarg_partner_app/features/entry/sign_in_screen.dart';
 
 class _OtpGateway implements ActivationGateway {
+  _OtpGateway({
+    this.result = const Result.ok('5 minutes'),
+    this.expectedRole = AppRole.agent,
+  });
+
+  final Result<String> result;
+  final AppRole expectedRole;
   int calls = 0;
 
   @override
   Future<Result<String>> sendOtp(String phone, AppRole role) async {
     calls += 1;
     expect(phone, '9800000000');
-    expect(role, AppRole.agent);
-    return const Result.ok('5 minutes');
+    expect(role, expectedRole);
+    return result;
   }
 }
 
@@ -53,6 +63,13 @@ void main() {
           ),
         ),
       );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+
+      expect(gateway.calls, 0);
+      expect(find.text('Set up your account'), findsOneWidget);
+      expect(find.text('Enter the 6-digit code'), findsNothing);
+      await tester.tap(find.text('Check invitation and send code'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 250));
 
@@ -96,6 +113,105 @@ void main() {
     expect(passwordStep, isNot(contains('Pinput')));
     expect(route, isNot(contains('otp')));
     expect(route, isNot(contains('password')));
+  });
+
+  test('sign in exposes invited-account setup only for crew roles', () {
+    final signIn = File(
+      'lib/features/entry/sign_in_screen.dart',
+    ).readAsStringSync();
+
+    expect(signIn, contains('Set up invited account'));
+    expect(signIn, contains('if (role != AppRole.agent)'));
+    expect(signIn, contains('AppRoutes.activateAccount'));
+    expect(signIn, contains('ActivationArgs(role: role)'));
+    expect(signIn, isNot(contains('Enter the invited 10-digit mobile number')));
+    expect(signIn, isNot(contains('enter ACTIVATE')));
+  });
+
+  testWidgets('agent login hides crew invitation setup', (tester) async {
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: MaterialApp(home: SignInScreen(roleWire: 'agent')),
+      ),
+    );
+    expect(find.text('Set up invited account'), findsNothing);
+    expect(find.text('Forgot password?'), findsOneWidget);
+
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: MaterialApp(home: SignInScreen(roleWire: 'driver')),
+      ),
+    );
+    expect(find.text('Set up invited account'), findsOneWidget);
+  });
+
+  testWidgets('no invitation stays on phone entry and never claims SMS sent', (
+    tester,
+  ) async {
+    final gateway = _OtpGateway(
+      expectedRole: AppRole.driver,
+      result: const Result.err(
+        NotFoundFailure(
+          message:
+              'No pending driver invitation was found for this phone number.',
+          code: BackendErrorCode.invitationNotFound,
+          statusCode: 404,
+        ),
+      ),
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [activationRepositoryProvider.overrideWithValue(gateway)],
+        child: const MaterialApp(
+          home: ActivationScreen(
+            args: ActivationArgs(phone: '9800000000', role: AppRole.driver),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Check invitation and send code'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+
+    expect(find.text('Set up your account'), findsOneWidget);
+    expect(find.text('Enter the 6-digit code'), findsNothing);
+    expect(find.textContaining('Sent by SMS'), findsNothing);
+    expect(find.textContaining('No pending driver invitation'), findsOneWidget);
+  });
+
+  testWidgets('active account is directed to sign in without showing OTP', (
+    tester,
+  ) async {
+    final gateway = _OtpGateway(
+      expectedRole: AppRole.driver,
+      result: const Result.err(
+        UnknownFailure(
+          message:
+              'This driver account is already active. Sign in with your password.',
+          code: BackendErrorCode.accountAlreadyActive,
+          statusCode: 409,
+        ),
+      ),
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [activationRepositoryProvider.overrideWithValue(gateway)],
+        child: const MaterialApp(
+          home: ActivationScreen(
+            args: ActivationArgs(phone: '9800000000', role: AppRole.driver),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Check invitation and send code'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+
+    expect(find.text('Go to sign in'), findsOneWidget);
+    expect(find.text('Enter the 6-digit code'), findsNothing);
+    expect(find.textContaining('already active'), findsOneWidget);
   });
 
   testWidgets('missing in-memory activation handoff fails closed', (
