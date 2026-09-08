@@ -65,6 +65,9 @@ abstract final class AppEnvironment {
   /// The one production host, carried over from the previous implementation.
   static const String _productionBaseUrl = 'https://api.shuvmarg.com';
 
+  /// Shared staging API used by the passenger, agent, bus-owner and admin apps.
+  static const String _stagingBaseUrl = 'https://api-staging.shuvmarg.com';
+
   // ───────────────────────────────────────────────────────────────────────────
   // Flavour
   // ───────────────────────────────────────────────────────────────────────────
@@ -91,20 +94,31 @@ abstract final class AppEnvironment {
   /// Route paths in `ApiPaths` all begin with `/api/...`, so this must be an
   /// origin only, never an origin + prefix.
   static String get baseUrl {
-    if (_baseUrlOverride.trim().isNotEmpty) {
-      return _stripTrailingSlash(_baseUrlOverride.trim());
+    return resolveBaseUrl(
+      selectedFlavor: flavor,
+      override: _baseUrlOverride,
+      localBaseUrl: _loopbackBaseUrl,
+    );
+  }
+
+  /// Resolves a build flavour to its API origin.
+  ///
+  /// Kept deterministic so release configuration can be verified without
+  /// making a network request or depending on the test runner's platform.
+  @visibleForTesting
+  static String resolveBaseUrl({
+    required AppFlavor selectedFlavor,
+    String override = '',
+    String localBaseUrl = 'http://127.0.0.1:7012',
+  }) {
+    if (override.trim().isNotEmpty) {
+      return _stripTrailingSlash(override.trim());
     }
 
-    return switch (flavor) {
-      AppFlavor.local => _loopbackBaseUrl,
+    return switch (selectedFlavor) {
+      AppFlavor.local => _stripTrailingSlash(localBaseUrl.trim()),
+      AppFlavor.staging => _stagingBaseUrl,
       AppFlavor.production => _productionBaseUrl,
-      // There is no known staging host to hardcode, and inventing one would be
-      // worse than refusing to guess. Supply it at build time.
-      AppFlavor.staging => throw StateError(
-        'The staging API host is not compiled in. Build with '
-        '--dart-define=SHUVMARG_FLAVOR=staging '
-        '--dart-define=SHUVMARG_API_BASE_URL=https://<staging-host>',
-      ),
     };
   }
 

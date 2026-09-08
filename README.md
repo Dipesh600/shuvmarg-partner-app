@@ -2,6 +2,25 @@
 
 Shuvmarg Agent & Conductor Partner App
 
+## Build the staging Android app
+
+The staging build uses the same backend as the passenger, agent web,
+bus-owner and admin staging applications:
+
+```text
+https://api-staging.shuvmarg.com
+```
+
+Build the ARM64 release APK with the versioned launcher so the staging flavour
+is always selected consistently. Current Android test devices must support
+ARM64:
+
+```bash
+zsh tool/build_staging_android.zsh
+```
+
+The APK is written to `build/app/outputs/flutter-apk/app-release.apk`.
+
 ## Run on a physical Android phone
 
 A physical phone cannot use Android emulator address `10.0.2.2`. Start the
